@@ -1,4 +1,4 @@
-# SäkerhetSnabben Offline 1.4
+# SäkerhetSnabben Offline 1.5
 
 Mobilanpassad app för kundobjekt, arbetsorder, brandlarmsprotokoll och detektorregister. Appen körs lokalt i webbläsaren utan konto eller ChatGPT-inloggning.
 
@@ -24,7 +24,7 @@ Första hämtningen och uppdateringar kräver internet. E-post, kartor och andra
 - Separata arbetsorder med ordernummer, SK/KV/SB, planerat datum och status. Dagens jobb, historik och kontroll inför avslut.
 - Centralapparat som rullista: Schneider FX101, Schneider FDP, Notisfire ID300, Notisfire ID3000, Notisfire NFS2-8, Consilium Terrafire och Consilium Multifire. Manuellt alternativ finns. Contal Cat12Ce är standardlarmsändare.
 - Brandlarmsprotokoll med lokala utkast och arkiv.
-- Detektorregister per objekt med import, provningshistorik, anmärkningar, lokalt foto, detektorbyte och CSV-export. Detektorhistoriken förs ännu inte automatiskt över till protokollens provningsfält.
+- Detektorregister per objekt med import, provningshistorik, anmärkningar, lokalt foto, detektorbyte och CSV-export. Provningsläget visar återstående detektorer och går vidare efter sparande. Beteckningen visas som Sektion 1 · 01.023 eller Sektion 1 · 223 för ID300/ID3000. BL401 hämtar senaste registreringen per detektor och generation för protokollets datum och arbetsorder. Utan vald arbetsorder visas dagens registreringar för objektet. Resultat, kommentarer och foton ingår i utskriften; övriga kontrollpunkter bedöms manuellt. Historiska arkiv behåller sina sparade resultat.
 - Lokal säkerhetskopiering och återställning.
 
 ## Dina uppgifter
