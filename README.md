@@ -36,3 +36,5 @@ Vid byte från den tidigare testadressen: exportera en säkerhetskopia där och 
 ## Teknik
 
 Statisk HTML, CSS och JavaScript med en service worker som verifierar offlinefilerna. Alla sökvägar är relativa och fungerar under repositoryts Pages-sökväg. `engine.js` innehåller den befintliga protokollappen; övriga moduler hanterar skal, objekt, order, detektorer och lagring. Ingen server eller extern databas krävs.
+
+Version 1.5 publiceras på GitHub Pages. Uppdatera offlinefilerna via Offline & backup efter publicering.
