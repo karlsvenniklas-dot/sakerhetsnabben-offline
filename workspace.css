@@ -1,4 +1,7 @@
-/* A light, field-friendly treatment of the retained protocol engine. Printed reports are untouched. */
+/* A light, field-friendly treatment of the retained protocol engine. */
+.object-list-card{display:flex!important;flex-direction:column;align-items:stretch!important;gap:8px;overflow-wrap:anywhere}
+.object-list-card>div{width:100%;min-width:0}
+.object-number{display:block;font-size:13px;color:#566f7d}
 @media screen {
  html,body{background:#f2f5f7!important;color-scheme:light;-webkit-text-size-adjust:100%}
  #root>.min-h-screen{background:#f2f5f7!important;color:#153343!important;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important}
