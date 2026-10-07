@@ -46,6 +46,41 @@
     async list(prefix='') { const keys = await transact('readonly',store=>store.getAllKeys()); return {keys:keys.filter(key=>key.startsWith(prefix))}; }
   };
   window.localData = {
+    async attachDocument(facilityId,meta,data) {
+      await transact('readwrite',store=>{const r=store.get('docs:'+facilityId);r.onsuccess=()=>{const list=JSON.parse(r.result||'[]');list.push(meta);store.put(JSON.stringify(list),'docs:'+facilityId);store.put(JSON.stringify(data),'docfile:'+meta.id);};});
+    },
+    async commitObjectImport(before, after) {
+      let failure;
+      try { await transact('readwrite', store=>{
+        const f=store.get('facilities'),o=store.get('workorders');
+        o.onsuccess=()=>{try{
+          if((f.result||'[]')!==before.facilities||(o.result||'[]')!==before.workorders)throw Error('Objekten har ändrats. Granska importen igen.');
+          const undo={date:new Date().toISOString(),before,after};
+          store.put(JSON.stringify(undo),'last-object-import');
+          store.put(after.facilities,'facilities');store.put(after.workorders,'workorders');
+        }catch(e){failure=e;store.transaction.abort();}};
+      }); }catch(e){throw failure||e;}
+    },
+    async undoObjectImport() {
+      let failure;
+      try { await transact('readwrite',store=>{
+        const keys=store.getAllKeys(),values=store.getAll();
+        values.onsuccess=()=>{try{
+          const records=Object.fromEntries(keys.result.map((key,i)=>[key,values.result[i]]));
+          const undo=JSON.parse(records['last-object-import']||'null');if(!undo)throw Error('Ingen import att ångra.');
+          if((records.facilities||'[]')!==undo.after.facilities||(records.workorders||'[]')!==undo.after.workorders)throw Error('Objekt eller arbetsorder har ändrats efter importen. Ångring stoppades för att bevara ändringarna.');
+          const oldIds=new Set(JSON.parse(undo.before.facilities).map(f=>f.id));
+          const newIds=JSON.parse(undo.after.facilities).filter(f=>!oldIds.has(f.id)).map(f=>f.id);
+          const oldOrders=new Set(JSON.parse(undo.before.workorders).map(o=>o.id));
+          newIds.push(...JSON.parse(undo.after.workorders).filter(o=>!oldOrders.has(o.id)).map(o=>o.id));
+          for(const [key,value]of Object.entries(records)){
+            if(['facilities','workorders','last-object-import'].includes(key))continue;
+            if(newIds.some(id=>key.includes(id)||value.includes(id)))throw Error('Ett importerat objekt eller uppdrag har fått ny dokumentation. Ångring stoppades för att bevara arbetet.');
+          }
+          store.put(undo.before.facilities,'facilities');store.put(undo.before.workorders,'workorders');store.delete('last-object-import');
+        }catch(e){failure=e;store.transaction.abort();}};
+      }); }catch(e){throw failure||e;}
+    },
     async updateRecord(key, fallback, update) {
       let failure;
       try { return await transact('readwrite', store=>{
@@ -62,16 +97,17 @@
       });
     },
     async exportBackup() {
-      const data = await this.snapshot();
+      const data = await this.snapshot();delete data['last-object-import'];
       return {app:'SäkerhetSnabben',version:4,edition:'offline',exportedAt:new Date().toISOString(),data};
     },
     async restore(backup) {
       if (!backup || backup.app !== 'SäkerhetSnabben' || !backup.data || typeof backup.data !== 'object' || Array.isArray(backup.data)) throw new Error('Det här är inte en säkerhetskopia från SäkerhetSnabben.');
       const entries=Object.entries(backup.data);
-      const allowed=/^(facilities|workorders|history-index|seed-v\d+|test-mode|facility-overrides|draft:.+|docs:.+|docfile:.+|materiel:.+|report:.+|detectors:.+)$/;
+      const allowed=/^(facilities|workorders|history-index|seed-v\d+|test-mode|facility-overrides|draft:.+|docs:.+|docfile:.+|materiel:.+|report:.+|detectors:.+|issues:.+|service-reports:.+)$/;
       for(const [key,value] of entries) {
         if(!allowed.test(key)||typeof value!=='string') throw new Error('Säkerhetskopian innehåller en okänd post.');
         const parsed=JSON.parse(value);
+        if((key.startsWith('issues:')||key.startsWith('service-reports:'))&&(!Array.isArray(parsed)||parsed.some(v=>!v||typeof v.id!=='string')))throw Error('Ett service- eller felregister är ogiltigt.');
         if((key==='facilities'||key==='workorders'||key==='history-index'||key.startsWith('docs:')||key.startsWith('materiel:'))&&!Array.isArray(parsed)) throw new Error('Ett register i säkerhetskopian har fel format.');
         if(key==='facilities'&&parsed.some(v=>!v||typeof v.id!=='string'||typeof v.namn!=='string')) throw new Error('Ett objekt saknar giltigt namn eller ID.');
         if(key==='workorders'&&parsed.some(v=>!v||typeof v.id!=='string'||typeof v.facilityId!=='string'||!['Planerat','Påbörjat','Klart'].includes(v.status))) throw new Error('En arbetsorder är ogiltig.');

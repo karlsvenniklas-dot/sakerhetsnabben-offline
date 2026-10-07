@@ -1,4 +1,4 @@
-# SäkerhetSnabben Offline 1.5
+# SäkerhetSnabben Offline 1.6
 
 Mobilanpassad app för kundobjekt, arbetsorder, brandlarmsprotokoll och detektorregister. Appen körs lokalt i webbläsaren utan konto eller ChatGPT-inloggning.
 
@@ -37,4 +37,12 @@ Vid byte från den tidigare testadressen: exportera en säkerhetskopia där och 
 
 Statisk HTML, CSS och JavaScript med en service worker som verifierar offlinefilerna. Alla sökvägar är relativa och fungerar under repositoryts Pages-sökväg. `engine.js` innehåller den befintliga protokollappen; övriga moduler hanterar skal, objekt, order, detektorer och lagring. Ingen server eller extern databas krävs.
 
-Version 1.5 publiceras på GitHub Pages. Uppdatera offlinefilerna via Offline & backup efter publicering.
+## Nytt i 1.6
+
+Objektkortet samlar kontaktlänkar, saknade uppgifter, senaste dokumenterade besök, felregister, lokala PDF-ritningar och bilder samt servicerapporter.
+
+Fel från detektorprovning och arkiverade protokoll tas in i felregistret när objektkortet öppnas. Status är Öppen, Åtgärdad och Kontrollerad; varje ändring kräver tekniker och anteckning. Gamla protokoll ändras inte.
+
+Objektimport varnar för lika namn eller adresser med olika objektnummer. Ångra senaste objektimporten återställer bara objekt och arbetsorder och stoppas om de har ändrats eller nya objekt har fått dokumentation. Ångerposten sparas lokalt och ingår inte i exportbackup.
+
+Servicerapporter granskas före sparande. Sparade rapporter är ögonblicksbilder med arbetsbeskrivning, detektorresultat, felhistorik och valda bilder. PDF skapas lokalt med pdf-lib (MIT, se pdf-lib-LICENSE.md). Hämta PDF aktiverar Dela PDF på enheter som stöder fildelning; annars hämtas filen. PDF-ritningar listas men bäddas inte in som sidor. Kunduppgifter och dokument publiceras aldrig i kodrepositoryt.
