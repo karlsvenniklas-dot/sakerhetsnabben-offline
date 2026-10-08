@@ -46,6 +46,17 @@
     async list(prefix='') { const keys = await transact('readonly',store=>store.getAllKeys()); return {keys:keys.filter(key=>key.startsWith(prefix))}; }
   };
   window.localData = {
+    async commitRecords(before,writes) {
+      let failure;
+      try { await transact('readwrite',store=>{
+        const keys=store.getAllKeys(),values=store.getAll();
+        values.onsuccess=()=>{try{
+          const now=Object.fromEntries(keys.result.map((k,i)=>[k,values.result[i]]));
+          if(Object.keys(now).length!==Object.keys(before).length||Object.keys(now).some(k=>now[k]!==before[k]))throw Error('Uppgifter har ändrats efter granskningen. Välj filen och granska igen.');
+          for(const [key,value]of Object.entries(writes))store.put(value,key);
+        }catch(e){failure=e;store.transaction.abort();}};
+      }); }catch(e){throw failure||e;}
+    },
     async attachDocument(facilityId,meta,data) {
       await transact('readwrite',store=>{const r=store.get('docs:'+facilityId);r.onsuccess=()=>{const list=JSON.parse(r.result||'[]');list.push(meta);store.put(JSON.stringify(list),'docs:'+facilityId);store.put(JSON.stringify(data),'docfile:'+meta.id);};});
     },
@@ -103,10 +114,12 @@
     async restore(backup) {
       if (!backup || backup.app !== 'SäkerhetSnabben' || !backup.data || typeof backup.data !== 'object' || Array.isArray(backup.data)) throw new Error('Det här är inte en säkerhetskopia från SäkerhetSnabben.');
       const entries=Object.entries(backup.data);
-      const allowed=/^(facilities|workorders|history-index|seed-v\d+|test-mode|facility-overrides|draft:.+|docs:.+|docfile:.+|materiel:.+|report:.+|detectors:.+|issues:.+|service-reports:.+)$/;
+      const allowed=/^(facilities|workorders|history-index|seed-v\d+|test-mode|facility-overrides|field-preferences|fieldwork:.+|draft:.+|docs:.+|docfile:.+|materiel:.+|report:.+|detectors:.+|issues:.+|service-reports:.+)$/;
       for(const [key,value] of entries) {
         if(!allowed.test(key)||typeof value!=='string') throw new Error('Säkerhetskopian innehåller en okänd post.');
         const parsed=JSON.parse(value);
+        if(key.startsWith('fieldwork:')){if(window.fieldData)window.fieldData.validateField(parsed);else if(!parsed||!['visits','materials','plans','pins'].every(k=>Array.isArray(parsed[k])))throw Error('Fältregistret är ogiltigt.');}
+        if(key==='field-preferences'&&(!parsed||!Array.isArray(parsed.phrases)||parsed.phrases.some(p=>typeof p!=='string')||!['SK','KV','SB'].every(k=>Array.isArray(parsed.templates?.[k])&&parsed.templates[k].every(i=>typeof i?.text==='string'&&['Förberedelser','Provning','Återställning','Dokumentation'].includes(i.phase)))))throw Error('Egna mallar eller snabbtexter är ogiltiga.');
         if((key.startsWith('issues:')||key.startsWith('service-reports:'))&&(!Array.isArray(parsed)||parsed.some(v=>!v||typeof v.id!=='string')))throw Error('Ett service- eller felregister är ogiltigt.');
         if((key==='facilities'||key==='workorders'||key==='history-index'||key.startsWith('docs:')||key.startsWith('materiel:'))&&!Array.isArray(parsed)) throw new Error('Ett register i säkerhetskopian har fel format.');
         if(key==='facilities'&&parsed.some(v=>!v||typeof v.id!=='string'||typeof v.namn!=='string')) throw new Error('Ett objekt saknar giltigt namn eller ID.');

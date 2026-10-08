@@ -1,4 +1,4 @@
-# SäkerhetSnabben Offline 1.6
+# SäkerhetSnabben Offline 1.7
 
 Mobilanpassad app för kundobjekt, arbetsorder, brandlarmsprotokoll och detektorregister. Appen körs lokalt i webbläsaren utan konto eller ChatGPT-inloggning.
 
@@ -46,3 +46,16 @@ Fel från detektorprovning och arkiverade protokoll tas in i felregistret när o
 Objektimport varnar för lika namn eller adresser med olika objektnummer. Ångra senaste objektimporten återställer bara objekt och arbetsorder och stoppas om de har ändrats eller nya objekt har fått dokumentation. Ångerposten sparas lokalt och ingår inte i exportbackup.
 
 Servicerapporter granskas före sparande. Sparade rapporter är ögonblicksbilder med arbetsbeskrivning, detektorresultat, felhistorik och valda bilder. PDF skapas lokalt med pdf-lib (MIT, se pdf-lib-LICENSE.md). Hämta PDF aktiverar Dela PDF på enheter som stöder fildelning; annars hämtas filen. PDF-ritningar listas men bäddas inte in som sidor. Kunduppgifter och dokument publiceras aldrig i kodrepositoryt.
+
+## Nytt i 1.7
+
+- Egna SK/KV/SB-mallar och sparade besökschecklistor med faser, anteckningar, ej aktuellt med skäl och återöppning. Malländringar påverkar endast nya besök.
+- Offlinebilder och PDF-sidor med zoom, detektormarkeringar, periodfärger, historik och genväg till provning. PDF.js är inbyggt (Apache 2.0, se pdfjs-LICENSE.txt). Krypterade eller ovanliga PDF-filer kan behöva exporteras som bild först.
+- Periodbaserade provningsförslag med manuellt godkänt urval, sparade arbetslistor och CSV-export. Inga automatiska antaganden om föreskriven provningsomfattning.
+- Material, modell, antal, installationsdatum, beställningsstatus och CSV-underlag. Den tidigare materiallistan visas också.
+- Besöksunderlag med öppna fel, material, kontakter, föregående servicerapport och egna anteckningar, som textfil.
+- Ett objekt kan exporteras med dokument, utkast, arbetsorder och historik. Import under Offline & backup visar varje ny eller avvikande post. Lokala värden behålls som standard. Inkommande register ersätts endast efter användarens val; importen är atomisk och stoppas om något ändrats sedan granskningen. Samma objektnummer med annat ID stoppas för att undvika dubbletter. Ingen automatisk synkning.
+- Egna snabbtexter i provningskommentarer, fel, åtgärder och besöksanteckningar. Mallar och snabbtexter ingår i full säkerhetskopia, inte i enskilda objektpaket.
+- Servicerapporten innehåller också besökets checklistor, materialstatus och anteckning inför nästa besök, som en sparad ögonblicksbild.
+
+Alla nya register ingår i full säkerhetskopia. Äldre säkerhetskopior stöds fortsatt. Befintlig lokal databas behålls vid uppdateringen.

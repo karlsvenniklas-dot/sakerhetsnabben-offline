@@ -1,6 +1,6 @@
 'use strict';
-const CACHE='sn-offline-shell-v9';
-const FILES=['./','./index.html','./workspace.html','./engine.js','./engine.css','./workspace.css','./storage.js','./objects.js','./orders.js','./detectors.js','./detectors-ui.js','./orders-ui.js','./import-ui.js','./shell.js','./shell.css','./manifest.webmanifest','./icon-192.png','./icon-512.png','./service-core.js','./service-ui.js','./service.css','./pdf-lib.min.js'];
+const CACHE='sn-offline-shell-v10';
+const FILES=['./','./index.html','./workspace.html','./engine.js','./engine.css','./workspace.css','./storage.js','./objects.js','./orders.js','./detectors.js','./detectors-ui.js','./orders-ui.js','./import-ui.js','./shell.js','./shell.css','./manifest.webmanifest','./icon-192.png','./icon-512.png','./service-core.js','./service-ui.js','./service.css','./pdf-lib.min.js','./field-core.js','./field-ui.js','./field.css','./pdf.min.mjs','./pdf.worker.min.mjs'];
 const urls=FILES.map(file=>new URL(file,self.registration.scope).href);
 self.addEventListener('install',event=>event.waitUntil((async()=>{
   const responses=await Promise.all(urls.map(async url=>{
@@ -14,7 +14,7 @@ self.addEventListener('install',event=>event.waitUntil((async()=>{
     if(pathname.endsWith('/')||pathname.endsWith('.html')){
       if(!(await response.clone().text()).includes('<meta name="sn-offline-app" content="v1">'))throw new Error(`INLOGGNING_ELLER_FELSIDA: ${name}`);
     }
-    if(pathname.endsWith('.js')&&!/javascript/.test(response.headers.get('content-type')||''))throw new Error(`FEL_FILFORMAT: ${name}`);
+    if((/\.m?js$/.test(pathname))&&!/javascript/.test(response.headers.get('content-type')||''))throw new Error(`FEL_FILFORMAT: ${name}`);
     // Validated same-origin static redirects (e.g. /index.html -> /) are allowed.
     // Store a non-redirected response so offline navigations are safe too.
     return [url,new Response(await response.arrayBuffer(),{status:response.status,statusText:response.statusText,headers:response.headers})];
