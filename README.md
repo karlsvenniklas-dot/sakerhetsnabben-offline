@@ -59,3 +59,14 @@ Servicerapporter granskas före sparande. Sparade rapporter är ögonblicksbilde
 - Servicerapporten innehåller också besökets checklistor, materialstatus och anteckning inför nästa besök, som en sparad ögonblicksbild.
 
 Alla nya register ingår i full säkerhetskopia. Äldre säkerhetskopior stöds fortsatt. Befintlig lokal databas behålls vid uppdateringen.
+
+
+### Version 1.8 – provning från ritningen
+
+Öppna Objektkort → Detektorer på ritningen. Välj sparad PDF/bild, välj detektor och placera markeringen. Välj arbetsorder, provare och provningsdatum. Tryck på markeringen, välj resultat och spara. Samma händelse används i BL401 för samma arbetsorder och datum, inklusive sektionsbilagan. Manuella bilagerader behålls.
+
+Årsväljaren visar historik och kvartalsräkningen är separat. Nytt år raderar inga händelser. En detektor räknas en gång per period; utbytta detektorer behöver provas igen. Kvarstående fel visas röda. Räknarna bygger på det registrerade detektorbeståndet och ersätter inte övriga kontrollpunkter.
+
+Utan larmadress: ange sektion och en unik lokal beteckning, exempelvis Detektor 4. Ingen automatisk slutsats om anläggningstyp dras från en saknad adress. Automatisk AI-identifiering av symboler ingår inte; markeringarna kopplas manuellt till detektorregistret.
+
+Kontrollera kärnlogiken med `node test-drawings.cjs`.
