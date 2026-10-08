@@ -19,6 +19,12 @@
  function label(d,model){return `Sektion ${d.sektion||'–'} · ${address(d,model)}`;}
  function splitAddress(d,model){const next={...d},a=String(d.adress||'').trim();let match=a.match(/^(\d+)\.(\d+)$/);if(!match&&!d.slinga&&compact(model))match=a.match(/^(\d)(\d{2})$/);if(match){if(d.slinga&&Number(d.slinga)!==Number(match[1]))throw Error('Slinga och adressbeteckning stämmer inte överens.');next.slinga=match[1];next.adress=match[2];}if(compact(model)&&next.adress&&next.slinga&&(!/^[1-9]$/.test(String(Number(next.slinga)))||!/^\d{1,2}$/.test(next.adress)))throw Error('ID300/ID3000: ange en siffra för slingan och två för adressen, exempelvis 223.');return next;}
  function protocolEvents(register,orderId,date,model){const latestByDevice=new Map();for(const e of register.events||[]){if(e.kind!=='test'||e.date!==date||(orderId&&e.orderId!==orderId))continue;const key=e.deviceId+':'+e.generation;const old=latestByDevice.get(key);if(!old||e.recordedAt>old.recordedAt)latestByDevice.set(key,e);}return [...latestByDevice.values()].map(e=>({...e,label:e.label||label(e.device,model)})).sort((a,b)=>a.label.localeCompare(b.label,'sv',{numeric:true}));}
+ function protocolState(state,events,model){
+  const manual=(state.sektioner||[]).filter(r=>!r.fromDetector&&!(r.sek==='001'&&r.adr.every(a=>!a)));
+  const groups=new Map();for(const e of events){if(!statuses.slice(0,2).includes(e.status))continue;const d=e.device||{},section=d.sektion||'Ej angiven',key=JSON.stringify([d.central||'',section]);if(!groups.has(key))groups.set(key,{sek:section,addresses:[]});const group=groups.get(key),addr=(d.central?d.central+' · ':'')+address(d,model);if(!group.addresses.includes(addr))group.addresses.push(addr);}
+  const auto=[];for(const g of groups.values())for(let i=0;i<g.addresses.length;i+=3){const adr=g.addresses.slice(i,i+3);while(adr.length<3)adr.push('');auto.push({sek:g.sek,adr,fromDetector:true});}
+  return {...state,detectorTests:events,sektioner:[...manual,...auto],tekniker:state.tekniker||[...new Set(events.map(e=>e.technician).filter(Boolean))].join(', ')};
+ }
  function coverage(register,year,quarter){
   const y=Number(year),q=Number(quarter);if(!Number.isInteger(y)||y<2000||y>2200||!Number.isInteger(q)||q<1||q>4)throw Error('Välj år och kvartal.');
   const from=`${y}-${String((q-1)*3+1).padStart(2,'0')}-01`,to=new Date(Date.UTC(y,q*3,0)).toISOString().slice(0,10);
@@ -26,5 +32,5 @@
   function count(a,b){const ds=register.devices.filter(d=>tested(d,register.events,a,b));return {devices:ds.length,sections:new Set(ds.filter(d=>d.sektion).map(d=>JSON.stringify([norm(d.central),numeric(d.sektion)]))).size};}
   return {totalDevices:register.devices.length,totalSections:sections.size,missingSections:register.devices.filter(d=>!d.sektion).length,year:count(`${y}-01-01`,`${y}-12-31`),quarter:count(from,to),from,to};
  }
- window.detectorData={fields,statuses,identity,validateDevice,coverage,plan,latest,tested,event,csv,compact,address,label,splitAddress,protocolEvents};
+ window.detectorData={fields,statuses,identity,validateDevice,coverage,protocolState,plan,latest,tested,event,csv,compact,address,label,splitAddress,protocolEvents};
 })();
