@@ -70,3 +70,9 @@ Alla nya register ingår i full säkerhetskopia. Äldre säkerhetskopior stöds 
 Utan larmadress: ange sektion och en unik lokal beteckning, exempelvis Detektor 4. Ingen automatisk slutsats om anläggningstyp dras från en saknad adress. Automatisk AI-identifiering av symboler ingår inte; markeringarna kopplas manuellt till detektorregistret.
 
 Kontrollera kärnlogiken med `node test-drawings.cjs`.
+
+### Version 1.9 – förberedd AI-analys med granskning
+
+Under Detektorer på ritningen finns **AI · Analysera ritning**. Visad sida skickas först efter användarens val att starta analysen. Förslag visas som lila markeringar och kan rättas, flyttas, tas bort eller kompletteras. Varje förslag måste väljas efter granskning. Koppla till en befintlig detektor eller skapa en ny; ingen provning registreras av AI.
+
+AI-tjänsten är ännu inte ansluten. Driftsättning och serverhemligheter beskrivs i [ai-server/README.md](ai-server/README.md). Appen visar detta tydligt och knappen är inaktiv tills en tjänst och åtkomstkod har angetts. Ingen API-nyckel ingår i webbappen. Efter granskning och import fungerar detektorprovningen offline.
