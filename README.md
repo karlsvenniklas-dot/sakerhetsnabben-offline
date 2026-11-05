@@ -1,4 +1,4 @@
-# SäkerhetSnabben Offline 2.0
+# SäkerhetSnabben Offline 2.1
 
 Mobilanpassad app för kundobjekt, arbetsorder, brandlarmsprotokoll och detektorregister. Appen körs lokalt i webbläsaren utan konto eller ChatGPT-inloggning.
 
@@ -82,3 +82,9 @@ AI-tjänsten är ännu inte ansluten. Driftsättning och serverhemligheter beskr
 Under **Offline & backup → Kontroll av lokala uppgifter** finns en skrivskyddad kontroll av objekt, arbetsorder, dokumentfiler, detektorer, provningsposter och ritningskopplingar. Kontrollera uppgifterna visar antal fel och upplysningar, utan att ändra eller skicka någon information. En kontrollrapport kan exporteras lokalt som JSON; den kan innehålla objektnamn och ska förvaras säkert. Historiska provningar utan kvarvarande detektor är upplysningar, inte automatiskt fel. Eventuella kopplingsproblem rättas manuellt efter att en säkerhetskopia sparats.
 
 Kör `node test-health-check.cjs` för kärntest. Säkerhetskopiering och kontroll i flygplansläge på fysisk telefon behöver fortsatt provas.
+
+### Version 2.1 – offline symbolmatchning
+
+Under **Objektkort → Detektorer på ritningen** finns **Sök liknande symboler offline**. Öppna en sparad PDF eller bild. Markera en tydlig detektorsymbol med två tryck på motsatta hörn. Appen letar efter liknande symboler på samma sida, helt lokalt i webbläsaren. Ingen bild, symbol eller anläggningsinformation skickas till en server vid denna funktion.
+
+Förslagen är visuella mönsterlikheter, inte bekräftade detektorer. Samma skala och orientering ger bäst resultat; roterade, skannade eller otydliga symboler kan missas. Annan grafik kan ge falska träffar. Använd granskningen för att flytta, ta bort eller lägga till symboler, koppla till befintliga detektorer eller skapa nya. Alla förslag måste godkännas manuellt och ingen provning registreras av symbolanalysen. Test på riktiga ritningar och fysisk iPhone i flygplansläge återstår.
