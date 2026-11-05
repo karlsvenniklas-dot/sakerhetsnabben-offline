@@ -52,9 +52,9 @@ function inspect(data) {
     }
     const reg=parse('detectors:'+f.id,{devices:[],events:[]});
     let deviceIds=new Set();
-    if(!reg||!Array.isArray(reg.devices)||!Array.isArray(reg.events))
+    if(reg!==null&&(!Array.isArray(reg.devices)||!Array.isArray(reg.events)))
       flag('error','Detektorregistret har fel format.',label);
-    else {
+    else if(reg!==null) {
       deviceIds=unique(reg.devices,'detektorregistret',label);
       unique(reg.events,'provningshistoriken',label);
       counts.detectors+=reg.devices.length;
@@ -63,9 +63,9 @@ function inspect(data) {
         flag('warning','En historisk provning saknar nuvarande detektor. Kontrollera om den har tagits bort.',label);
     }
     const field=parse('fieldwork:'+f.id,{pins:[],plans:[],visits:[],materials:[]});
-    if(!field||!Array.isArray(field.pins)||!Array.isArray(field.plans)||!Array.isArray(field.visits)||!Array.isArray(field.materials))
+    if(field!==null&&(!Array.isArray(field.pins)||!Array.isArray(field.plans)||!Array.isArray(field.visits)||!Array.isArray(field.materials)))
       flag('error','Fältregistret har fel format.',label);
-    else {
+    else if(field!==null) {
       counts.drawings+=field.pins.length;
       unique(field.pins,'ritningsmarkeringarna',label);
       for(const pin of field.pins) {
