@@ -3,8 +3,9 @@
   const $=id=>document.getElementById(id);
   const frame=$('workspace');
   let facilities=[],drafts=[],pending=null,engineReady=false,registration,cacheReady=false,toastTimer,refreshTimer;
-  const files=['./','./index.html','./workspace.html','./engine.js','./engine.css','./workspace.css','./storage.js','./objects.js','./orders.js','./detectors.js','./detectors-ui.js','./orders-ui.js','./import-ui.js','./shell.js','./shell.css','./manifest.webmanifest','./icon-192.png','./icon-512.png','./service-core.js','./service-ui.js','./service.css','./pdf-lib.min.js','./field-core.js','./field-ui.js','./ai-config.js','./drawing-ai-core.js','./drawing-ai-ui.js','./field.css','./pdf.min.mjs','./pdf.worker.min.mjs'];
-  const cacheName='sn-offline-shell-v15';
+  const files=['./','./index.html','./workspace.html','./engine.js','./engine.css','./workspace.css','./storage.js','./objects.js','./health-check.js','./orders.js','./detectors.js','./detectors-ui.js','./orders-ui.js','./import-ui.js','./shell.js','./shell.css','./manifest.webmanifest','./icon-192.png','./icon-512.png','./service-core.js','./service-ui.js','./service.css','./pdf-lib.min.js','./field-core.js','./field-ui.js','./ai-config.js','./drawing-ai-core.js','./drawing-ai-ui.js','./field.css','./pdf.min.mjs','./pdf.worker.min.mjs'];
+  const cacheName='sn-offline-shell-v16';
+  let healthReport=null;
   let offlineError='',installing=false;
   function showOfflineError(message){offlineError=message;$('offline-error').hidden=false;$('offline-error').style.overflowWrap='anywhere';$('offline-error').textContent=`Orsak: ${message}`;}
   async function workerVersion(){
@@ -61,7 +62,7 @@
     $('connection').textContent=cacheReady?(navigator.onLine?'Offline redo':'Offline · redo'):'Offline ej redo';
     $('offline-state').textContent=cacheReady?'Offline redo':'Inte verifierad';
     $('offline-description').textContent=cacheReady?'Appens filer finns sparade på den här enheten. Prova att stänga och öppna appen i flygplansläge innan första uppdraget.':'Appen behöver öppnas med internet tills alla filer har sparats. Om detta kvarstår kan inloggningen eller webbläsaren hindra offlineinstallationen.';
-    $('offline-progress').textContent=`${count} av ${files.length} filer sparade · Version 1.9 · ${navigator.serviceWorker?.controller?'Offlinefunktion aktiv':'Offlinefunktion inte aktiv'}`;
+    $('offline-progress').textContent=`${count} av ${files.length} filer sparade · Version 2.0 · ${navigator.serviceWorker?.controller?'Offlinefunktion aktiv':'Offlinefunktion inte aktiv'}`;
     if(cacheReady){offlineError='';$('offline-error').hidden=true;}
   }
   async function initOffline(){
@@ -92,6 +93,36 @@
   $('connection').onclick=()=>navigate('settings');$('choose-object').onclick=()=>openWork('OBJEKT');$('manage-objects').onclick=()=>openWork('OBJEKT');$('quick-protocol').onclick=()=>openWork('SNABB');$('back-home').onclick=()=>navigate('home');document.querySelector('.brand').onclick=event=>{event.preventDefault();navigate('home');};$('search').oninput=renderObjects;$('object-sort').onchange=renderObjects;window.addEventListener('objects-imported',()=>{engineReady=false;frame.src='./workspace.html';refresh();});
   $('home-backup').onclick=backup;$('export-backup').onclick=backup;$('import-backup').onclick=()=>$('backup-file').click();
   $('backup-file').onchange=async event=>{const file=event.target.files[0];if(!file)return;try{if(file.size>150*1048576)throw new Error('Filen är för stor för säker import på telefonen.');const data=JSON.parse(await file.text());if(!confirm('Importera säkerhetskopian? Poster med samma ID ersätts. Spara först en säkerhetskopia av nuvarande data.'))return;const count=await window.localData.restore(data);engineReady=false;frame.src='./workspace.html';await refresh();window.dispatchEvent(new Event('objects-imported'));toast(`${count} poster importerade.`);}catch(error){toast(error.message||'Importen misslyckades.');}finally{event.target.value='';}};
+  async function runDataCheck(){
+    const button=$('run-data-check');button.disabled=true;
+    $('data-check-summary').textContent='Läser lokala register…';
+    try{
+      const snapshot=await window.localData.snapshot();
+      const report=window.healthData.inspect(snapshot);
+      healthReport={app:'SäkerhetSnabben datakontroll',version:1,checkedAt:new Date().toISOString(),...report};
+      const counts=report.counts;
+      $('data-check-summary').textContent='Kontrollerat '+counts.objects+' objekt, '+counts.orders+' arbetsorder, '+counts.detectors+' detektorer, '+counts.tests+' provningar, '+counts.documents+' dokument och '+counts.drawings+' ritningsmarkeringar. '+report.totals.errors+' fel, '+report.totals.warnings+' upplysningar.';
+      $('export-data-check').disabled=false;
+      const list=$('data-check-findings');list.replaceChildren();
+      if(!report.totals.errors&&!report.totals.warnings){
+        const li=element('li','Inga kända kopplingsproblem hittades. Spara ändå regelbundna säkerhetskopior.');list.append(li);
+      }else{
+        for(const item of report.findings){
+          const li=element('li',(item.level==='error'?'Kontrollera: ':'Information: ')+item.description+(item.object?' · '+item.object:''));list.append(li);
+        }
+        if(report.truncated)list.append(element('li','Fler poster finns. Exportera rapporten för en sammanfattning.'));
+      }
+    }catch(error){
+      healthReport=null;$('export-data-check').disabled=true;
+      $('data-check-summary').textContent='Kontrollen kunde inte slutföras: '+(error.message||'Okänt fel');
+    }finally{button.disabled=false;}
+  }
+  $('run-data-check').onclick=runDataCheck;
+  $('export-data-check').onclick=()=>{
+    if(!healthReport)return;
+    download('SakerhetSnabben_datakontroll_'+healthReport.checkedAt.slice(0,10)+'.json',JSON.stringify(healthReport,null,2));
+    toast('Kontrollrapporten är exporterad. Filen kan innehålla objektnamn; förvara den säkert.');
+  };
   $('persist').onclick=async()=>{try{const granted=await navigator.storage?.persist?.();$('persist-state').textContent=granted?'Beständig lagring är beviljad. Ta fortfarande säkerhetskopior.':'Telefonen beviljade inte beständig lagring. Spara regelbundet en säkerhetskopia till Filer.';}catch{toast('Begäran stöds inte här. Ta regelbundna säkerhetskopior.');}};
   $('retry-offline').onclick=initOffline;
   $('check-update').onclick=async()=>{if(!registration||!registration.active){await initOffline();return;}try{await registration.update();await verifyCache();toast(registration.waiting?'En uppdatering är redo.':'Kontrollen är klar.');if(registration.waiting)$('apply-update').hidden=false;}catch(error){showOfflineError(error.message||'Kunde inte kontrollera uppdatering.');toast('Ingen kontakt. Prova igen med internet.');}};

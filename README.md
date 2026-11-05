@@ -1,4 +1,4 @@
-# SäkerhetSnabben Offline 1.7
+# SäkerhetSnabben Offline 2.0
 
 Mobilanpassad app för kundobjekt, arbetsorder, brandlarmsprotokoll och detektorregister. Appen körs lokalt i webbläsaren utan konto eller ChatGPT-inloggning.
 
@@ -76,3 +76,9 @@ Kontrollera kärnlogiken med `node test-drawings.cjs`.
 Under Detektorer på ritningen finns **AI · Analysera ritning**. Visad sida skickas först efter användarens val att starta analysen. Förslag visas som lila markeringar och kan rättas, flyttas, tas bort eller kompletteras. Varje förslag måste väljas efter granskning. Koppla till en befintlig detektor eller skapa en ny; ingen provning registreras av AI.
 
 AI-tjänsten är ännu inte ansluten. Driftsättning och serverhemligheter beskrivs i [ai-server/README.md](ai-server/README.md). Appen visar detta tydligt och knappen är inaktiv tills en tjänst och åtkomstkod har angetts. Ingen API-nyckel ingår i webbappen. Efter granskning och import fungerar detektorprovningen offline.
+
+### Version 2.0 – lokal hälsokontroll
+
+Under **Offline & backup → Kontroll av lokala uppgifter** finns en skrivskyddad kontroll av objekt, arbetsorder, dokumentfiler, detektorer, provningsposter och ritningskopplingar. Kontrollera uppgifterna visar antal fel och upplysningar, utan att ändra eller skicka någon information. En kontrollrapport kan exporteras lokalt som JSON; den kan innehålla objektnamn och ska förvaras säkert. Historiska provningar utan kvarvarande detektor är upplysningar, inte automatiskt fel. Eventuella kopplingsproblem rättas manuellt efter att en säkerhetskopia sparats.
+
+Kör `node test-health-check.cjs` för kärntest. Säkerhetskopiering och kontroll i flygplansläge på fysisk telefon behöver fortsatt provas.
