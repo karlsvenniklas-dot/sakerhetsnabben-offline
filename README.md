@@ -1,4 +1,4 @@
-# SäkerhetSnabben Offline 2.3
+# SäkerhetSnabben Offline 2.4
 
 Mobilanpassad app för kundobjekt, arbetsorder, brandlarmsprotokoll och detektorregister. Appen körs lokalt i webbläsaren utan konto eller ChatGPT-inloggning.
 
@@ -122,3 +122,15 @@ Kör `node test-drawing-ocr.cjs` för kärntest. Kunddata och kundritningar läg
 - Detektorer som lästes in innan 2.3 får rutor när ritningen skannas och sparas igen.
 
 Kör `node test-drawing-view.cjs` för vridning, klickpunkter och rutstorlek.
+
+### Version 2.4 – kvartalsplan, foto vid fel och märkt ritning
+
+Under **Objektkort → Detektorer på ritningen**, i procentrutan:
+
+- **Kvartalsplan och historik per sektion.** Sektionerna delas i fyra grupper så att alla provas under året: sektion 1, 5, 9 … i kvartal 1, sektion 2, 6, 10 … i kvartal 2 och så vidare. Varje kvartal täcker då hela anläggningen. Du kan välja kvartal för en sektion själv, och valet sparas. Tabellen visar per sektion vilket kvartal den hör till, när den senast provades och om den har provats i kvartalet. Sektioner och detektorer som inte provats på 12 månader markeras röda. Provningsrutan visar också när detektorn senast provades.
+- **Foto vid fel.** Felrutan och rutan för Ej åtkomlig har knappen **📷 Ta foto**, som öppnar kameran. Fotot förminskas på enheten till högst cirka 1600 pixlar och sparas med provningen. Det följer med i BL401 under Registrerad detektorprovning.
+- **Märkt ritning som bilaga.** BL401 får en ritningsbilaga sist i utskriften, med varje ritningssida som har markeringar. Grön betyder provad OK, röd anmärkning och gul randig återstår i kvartalet. Läget gäller protokollets datum och ritningen vrids så att texten blir läsbar. **Märkt ritning som PDF** skapar samma sidor som en PDF med listan över återstående provning sist.
+- **Återstående – dela lista.** En textlista som kan delas, kopieras eller sparas. Den visar sektioner i kvartalets plan som inte provats, sektioner som inte provats i år, detektorer som inte provats på 12 månader och kvarstående anmärkningar eller ej åtkomliga detektorer.
+- Gula rutor för återstående detektorer har nu ränder och mörk kant så att de syns även på gula ytor i ritningen.
+
+Kvartalsplanen är ett hjälpmedel för att sprida provningen. Kraven i procentrutan (SBF 110:7/110:8) räknas som tidigare. Kör `node test-quarter-plan.cjs` för kärntest.

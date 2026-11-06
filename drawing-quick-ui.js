@@ -4,7 +4,7 @@
   "use strict";
   const core = window.drawingTextData;
   let det = window.detectorData; // detectors.js loads after this file
-  const memory = { facility: "", quick: false, scroll: {}, scan: null };
+  const memory = { facility: "", quick: false, scroll: {}, scan: null, planOpen: false };
   const el = (tag, text, cls) => {
     const n = document.createElement(tag);
     if (text !== undefined) n.textContent = text;
@@ -47,6 +47,33 @@
     "Märkning saknas eller felaktig",
     "Detektor ej åtkomlig — provas vid nästa tillfälle",
   ];
+  /* Camera photo -> JPEG data URL of at most ~1600 px, so the register stays small. */
+  async function shrinkPhoto(file) {
+    if (!/^image\//.test(file.type || "image/")) throw Error("Välj en bild.");
+    const url = URL.createObjectURL(file);
+    try {
+      const img = new Image();
+      img.src = url;
+      try {
+        await img.decode();
+      } catch {
+        throw Error("Bilden kunde inte läsas. Prova att ta fotot igen.");
+      }
+      for (const [side, quality] of [[1600, 0.75], [1200, 0.65], [900, 0.6]]) {
+        const scale = Math.min(1, side / Math.max(img.naturalWidth, img.naturalHeight)),
+          canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+        canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+        const data = canvas.toDataURL("image/jpeg", quality);
+        canvas.width = canvas.height = 0;
+        if (data.length < 1.4 * 1024 * 1024) return data;
+      }
+      throw Error("Fotot blev för stort.");
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
   let toastTimer = 0;
   function toast(text, undo) {
     document.querySelector(".dq-toast")?.remove();
@@ -206,8 +233,214 @@
       ),
       sectionList,
     );
-    box.append(head, bar, detail, actions, goalBox);
+    /* ---------- quarterly plan and history per section ---------- */
+    const qp = window.quarterPlanData;
+    let quarterPlan = ctx.quarterPlan || { sections: {} };
+    const planBox = el("details", undefined, "dq-goal dq-plan"),
+      planSummary = el("summary", "Kvartalsplan och historik per sektion"),
+      planNote = el("p", undefined, "dq-detail"),
+      planTable = el("div", undefined, "dq-table-wrap");
+    planBox.append(
+      planSummary,
+      el(
+        "p",
+        "Sektionerna delas automatiskt i fyra grupper (sektion 1, 5, 9 … i kvartal 1, sektion 2, 6, 10 … i kvartal 2 osv.) så att alla sektioner provas under året och varje kvartal täcker hela anläggningen. Ändra kvartal för en sektion vid behov – ditt val sparas. Rött = inte provad på 12 månader.",
+        "dq-detail",
+      ),
+      planNote,
+      planTable,
+    );
+    const shareList = button("Återstående – dela lista", shareRemaining),
+      exportPdf = button("Märkt ritning som PDF", exportDrawing);
+    actions.append(shareList, exportPdf);
+    box.append(head, bar, detail, actions, goalBox, planBox);
     drawings.insertBefore(box, drawings.children[1] || null);
+    const refDate = () => (/^\d{4}-\d{2}-\d{2}$/.test(testDate.value) ? testDate.value : new Date().toISOString().slice(0, 10));
+    const sectionName = (s) => qp.sectionName(s);
+
+    function paintPlan(c) {
+      const plan = qp.planQuarters(register.devices, quarterPlan),
+        h = qp.history(register, refDate()),
+        hist = new Map(h.sections.map((s) => [s.section, s])),
+        current = Number(quarter.value),
+        planned = plan.byQuarter[current] || [],
+        testedNow = (s) =>
+          register.devices.some((d) => qp.sectionOf(d) === s && det.tested(d, register.events, c.from, c.to)),
+        doneNow = planned.filter(testedNow).length,
+        staleSections = h.sections.filter((s) => s.stale && s.section).length;
+      planSummary.textContent =
+        `Kvartalsplan och historik · kvartal ${current}: ${doneNow}/${planned.length} planerade sektioner provade` +
+        (h.stale.length ? ` · ${h.stale.length} detektorer ej provade på 12 mån` : "");
+      planNote.textContent =
+        `Kvartal ${current}: ${planned.length ? planned.map(sectionName).join(", ") : "inga sektioner"}. ` +
+        (staleSections
+          ? `${staleSections} ${staleSections === 1 ? "sektion" : "sektioner"} har inte provats sedan ${h.limit}.`
+          : `Alla sektioner har provats sedan ${h.limit}.`);
+      planNote.className = staleSections ? "dq-detail dq-left" : "dq-detail";
+      if (!plan.rows.length) {
+        planTable.replaceChildren(el("p", "Inga detektorer med sektion ännu.", "dq-detail"));
+        return;
+      }
+      const table = el("table", undefined, "dq-table dq-plan-table"),
+        headRow = el("tr");
+      for (const t of ["Sektion", "Kvartal", "Senast provad", "Läge"]) headRow.append(el("th", t));
+      table.append(headRow);
+      for (const r of plan.rows) {
+        const s = hist.get(r.section) || { last: "", stale: true, devices: r.devices, recent: 0 },
+          row = el("tr"),
+          sel = el("select"),
+          now = testedNow(r.section);
+        sel.setAttribute("aria-label", "Kvartal för " + sectionName(r.section));
+        options(
+          sel,
+          [
+            ["auto", "Auto"],
+            ...[1, 2, 3, 4].map((q) => [String(q), "Kvartal " + q]),
+          ],
+          r.manual ? String(r.quarter) : "auto",
+        );
+        if (!r.manual) sel.options[0].textContent = "Auto (" + r.quarter + ")";
+        sel.onchange = async () => {
+          try {
+            quarterPlan = qp.setQuarter(quarterPlan, r.section, sel.value);
+            const next = quarterPlan;
+            await ctx.saveField((st) => (st.quarterPlan = next));
+          } catch (e) {
+            toast(e.message);
+          }
+        };
+        const state = now
+          ? "✓ provad i kvartalet"
+          : s.stale
+            ? "⚠ ej provad på 12 mån"
+            : r.quarter === current
+              ? "Planerad nu – återstår"
+              : "";
+        row.className = [r.quarter === current && "now", s.stale && "stale", now && "done"].filter(Boolean).join(" ");
+        const selCell = el("td");
+        selCell.append(sel);
+        row.append(
+          el("td", `${sectionName(r.section)} (${r.devices})`),
+          selCell,
+          el("td", s.last || "Aldrig"),
+          el(
+            "td",
+            [state, s.recent < s.devices && s.last && `${s.devices - s.recent} av ${s.devices} detektorer >12 mån`]
+              .filter(Boolean)
+              .join(" · "),
+          ),
+        );
+        table.append(row);
+      }
+      planTable.replaceChildren(table);
+    }
+
+    function remainingText() {
+      const r = qp.remaining(register, {
+        year: year.value,
+        quarter: quarter.value,
+        plan: quarterPlan,
+        refDate: refDate(),
+      });
+      return qp.remainingText(r, {
+        facility: [f.anlNr, f.namn].filter(Boolean).join(" "),
+        year: year.value,
+        quarter: quarter.value,
+        label: (d) => det.label(d, f.central) + (d.placering ? " (" + d.placering + ")" : ""),
+        today: new Date().toISOString().slice(0, 10),
+      });
+    }
+    const fileName = (kind, ext) =>
+      `${kind}-${String(f.anlNr || f.namn || "objekt").replace(/[^\wåäöÅÄÖ-]+/g, "_")}-${year.value}-K${quarter.value}.${ext}`;
+    async function shareFile(file, title) {
+      try {
+        if (navigator.canShare?.({ files: [file] })) {
+          await navigator.share({ files: [file], title });
+          return;
+        }
+      } catch (e) {
+        if (e.name === "AbortError") return;
+      }
+      const url = URL.createObjectURL(file),
+        a = el("a");
+      a.href = url;
+      a.download = file.name;
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    }
+    async function shareRemaining() {
+      let text;
+      try {
+        text = remainingText();
+      } catch (e) {
+        toast(e.message);
+        return;
+      }
+      const wrap = el("div", undefined, "dq-sheet-wrap"),
+        sheet = el("div", undefined, "dq-sheet");
+      sheet.setAttribute("role", "dialog");
+      sheet.setAttribute("aria-modal", "true");
+      sheet.setAttribute("aria-label", "Återstående provning");
+      wrap.onclick = (e) => e.target === wrap && wrap.remove();
+      const area = el("textarea", undefined, "dq-remaining");
+      area.value = text;
+      area.rows = 14;
+      area.readOnly = true;
+      const row = el("div", undefined, "dq-actions");
+      row.append(
+        button(
+          "Dela / spara som text",
+          () => shareFile(new File([text], fileName("aterstaende", "txt"), { type: "text/plain" }), "Återstående provning"),
+          "primary",
+        ),
+        button("Kopiera", async () => {
+          try {
+            await navigator.clipboard.writeText(text);
+            toast("Listan är kopierad.");
+          } catch {
+            area.select();
+            toast("Markerad – kopiera med menyn.");
+          }
+        }),
+        button("Märkt ritning + lista som PDF", () => {
+          wrap.remove();
+          exportDrawing();
+        }),
+      );
+      sheet.append(el("h3", "Återstående provning"), area, row, button("Stäng", () => wrap.remove()));
+      wrap.append(sheet);
+      document.body.append(wrap);
+    }
+    async function exportDrawing() {
+      if (!window.drawingExport || !window.PDFLib) {
+        toast("PDF-funktionen är inte laddad.");
+        return;
+      }
+      exportPdf.disabled = true;
+      const old = exportPdf.textContent;
+      exportPdf.textContent = "Skapar PDF …";
+      try {
+        const date = (() => {
+          const { to } = qp.quarterRange(year.value, quarter.value),
+            ref = refDate();
+          return ref < to ? ref : to;
+        })();
+        const blob = await window.drawingExport.pdf({
+          facilityId: f.id,
+          facilityName: [f.anlNr, f.namn].filter(Boolean).join(" "),
+          date,
+          remainingText: remainingText(),
+        });
+        await shareFile(new File([blob], fileName("ritning", "pdf"), { type: "application/pdf" }), "Märkt ritning");
+      } catch (e) {
+        toast("PDF kunde inte skapas: " + e.message);
+      } finally {
+        exportPdf.disabled = false;
+        exportPdf.textContent = old;
+      }
+    }
 
     function updateProgress() {
       let c, p;
@@ -255,6 +488,11 @@
         `sektioner ${c.quarter.sections}/${c.totalSections} (${q.sectionPercent} %)` +
         yearText;
       ruleNote.textContent = p.ref + ": " + p.note;
+      try {
+        paintPlan(c);
+      } catch (e) {
+        planNote.textContent = e.message;
+      }
       // per-section overview
       const sections = new Map();
       for (const d of register.devices) {
@@ -278,6 +516,9 @@
     }
     year.addEventListener("change", updateProgress);
     quarter.addEventListener("change", updateProgress);
+    testDate.addEventListener("change", updateProgress);
+    planBox.open = !!memory.planOpen;
+    planBox.addEventListener("toggle", () => (memory.planOpen = planBox.open));
 
     function paintQuick() {
       quickToggle.textContent = memory.quick
@@ -344,6 +585,17 @@
           "muted",
         ),
       );
+      const ever = qp.lastTested(device, register.events),
+        limit = qp.yearBefore(refDate());
+      sheet.append(
+        el(
+          "p",
+          ever
+            ? `Senast provad: ${ever}${ever < limit ? " – mer än 12 månader sedan" : ""}`
+            : "Aldrig provad enligt registret.",
+          !ever || ever < limit ? "dq-stale" : "muted",
+        ),
+      );
       const order = ctx.orders.find((o) => o.id === orderSelect.value && o.status !== "Klart");
       const missing = [!order && "arbetsorder", !technician.value.trim() && "provare"].filter(Boolean);
       const msg = el("p", missing.length ? "Välj " + missing.join(" och ") + " ovanför ritningen." : "", "dq-msg");
@@ -374,20 +626,60 @@
             }),
           );
         field(noteBox, "Kommentar", area);
+        // photo straight from the camera; shrunk on the device before it is saved
+        let photo = "";
+        const camera = el("input");
+        camera.type = "file";
+        camera.accept = "image/*";
+        camera.setAttribute("capture", "environment");
+        camera.hidden = true;
+        const photoRow = el("div", undefined, "dq-photo"),
+          preview = el("img"),
+          takeBtn = button("📷 Ta foto", () => camera.click()),
+          dropBtn = button("Ta bort foto", () => {
+            photo = "";
+            paintPhoto();
+          });
+        preview.alt = "Foto till anmärkningen";
+        function paintPhoto() {
+          preview.hidden = !photo;
+          dropBtn.hidden = !photo;
+          if (photo) preview.src = photo;
+          else preview.removeAttribute("src");
+          takeBtn.textContent = photo ? "📷 Ta nytt foto" : "📷 Ta foto";
+        }
+        camera.onchange = async () => {
+          const file = camera.files?.[0];
+          camera.value = "";
+          if (!file) return;
+          takeBtn.disabled = true;
+          try {
+            photo = await shrinkPhoto(file);
+            msg.textContent = "";
+          } catch (e) {
+            msg.textContent = e.message;
+          } finally {
+            takeBtn.disabled = false;
+            paintPhoto();
+          }
+        };
+        photoRow.append(camera, takeBtn, dropBtn, preview);
+        paintPhoto();
         noteBox.append(
           chips,
+          photoRow,
           button("Spara " + (status === "Ej åtkomlig" ? "ej åtkomlig" : "fel"), () => {
             if (!area.value.trim()) {
               msg.textContent = "Skriv en kommentar.";
               area.focus();
               return;
             }
-            save(status, area.value.trim());
+            save(status, area.value.trim(), photo);
           }, "primary"),
         );
         area.focus();
       }
-      async function save(status, note) {
+      async function save(status, note, photo = "") {
         [...sheet.querySelectorAll("button")].forEach((b) => (b.disabled = true));
         ctx.beforeSave();
         let id = "";
@@ -406,6 +698,7 @@
               orderNumber: target.ordernummer,
               status,
               note,
+              ...(photo ? { photo } : {}),
               label: det.label(current, f.central),
               source: "drawing",
               docId: ctx.getDocument(),
@@ -869,6 +1162,7 @@
         scroller.removeEventListener("scroll", onScroll);
         year.removeEventListener("change", updateProgress);
         quarter.removeEventListener("change", updateProgress);
+        testDate.removeEventListener("change", updateProgress);
         stage.removeEventListener("click", addCapture, true);
         cancelScan = true;
         layer.remove();
