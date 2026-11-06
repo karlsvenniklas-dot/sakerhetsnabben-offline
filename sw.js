@@ -1,10 +1,10 @@
 'use strict';
-const CACHE='sn-offline-shell-v17';
-const FILES=['./','./index.html','./workspace.html','./engine.js','./engine.css','./workspace.css','./storage.js','./objects.js','./health-check.js','./orders.js','./detectors.js','./detectors-ui.js','./orders-ui.js','./import-ui.js','./shell.js','./shell.css','./manifest.webmanifest','./icon-192.png','./icon-512.png','./service-core.js','./service-ui.js','./service.css','./pdf-lib.min.js','./field-core.js','./field-ui.js','./ai-config.js','./drawing-ai-core.js','./offline-drawing-scan.js','./drawing-ai-ui.js','./field.css','./pdf.min.mjs','./pdf.worker.min.mjs'];
+const CACHE='sn-offline-shell-v21';
+const FILES=['./','./index.html','./workspace.html','./engine.js','./engine.css','./workspace.css','./storage.js','./objects.js','./health-check.js','./orders.js','./detectors.js','./detectors-ui.js','./orders-ui.js','./import-ui.js','./shell.js','./shell.css','./manifest.webmanifest','./icon-192.png','./icon-512.png','./service-core.js','./service-ui.js','./service.css','./pdf-lib.min.js','./field-core.js','./field-ui.js','./ai-config.js','./drawing-ai-core.js','./offline-drawing-scan.js','./drawing-ai-ui.js','./drawing-text-core.js','./drawing-quick-ui.js','./drawing-ocr-core.js','./drawing-ocr.js','./drawing-view.js','./tesseract/tesseract.min.js','./tesseract/worker.min.js','./tesseract/tesseract-core-simd-lstm.wasm.js','./tesseract/tesseract-core-lstm.wasm.js','./tesseract/eng.traineddata','./field.css','./pdf.min.mjs','./pdf.worker.min.mjs'];
 const urls=FILES.map(file=>new URL(file,self.registration.scope).href);
 self.addEventListener('install',event=>event.waitUntil((async()=>{
   const responses=await Promise.all(urls.map(async url=>{
-    const abort=new AbortController();const timer=setTimeout(()=>abort.abort(),20000);
+    const abort=new AbortController();const timer=setTimeout(()=>abort.abort(),url.includes('/tesseract/')?180000:20000);
     let response;
     try{response=await fetch(url,{cache:'reload',credentials:'same-origin',redirect:'follow',signal:abort.signal});}finally{clearTimeout(timer);}
     const name=new URL(url).pathname;

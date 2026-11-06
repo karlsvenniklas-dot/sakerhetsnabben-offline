@@ -23,7 +23,18 @@
   const manual=(state.sektioner||[]).filter(r=>!r.fromDetector);
   const groups=new Map();for(const e of events){if(!statuses.slice(0,2).includes(e.status))continue;const d=e.device||{},section=d.sektion||'Ej angiven',key=JSON.stringify([d.central||'',section]);if(!groups.has(key))groups.set(key,{sek:section,addresses:[]});const group=groups.get(key),addr=(d.central?d.central+' · ':'')+address(d,model);if(!group.addresses.includes(addr))group.addresses.push(addr);}
   const auto=[];for(const g of groups.values())for(let i=0;i<g.addresses.length;i+=3){const adr=g.addresses.slice(i,i+3);while(adr.length<3)adr.push('');auto.push({sek:g.sek,adr,fromDetector:true});}
-  return {...state,detectorTests:events,sektioner:[...manual,...auto],tekniker:state.tekniker||[...new Set(events.map(e=>e.technician).filter(Boolean))].join(', ')};
+  const next={...state,detectorTests:events,sektioner:[...manual,...auto],tekniker:state.tekniker||[...new Set(events.map(e=>e.technician).filter(Boolean))].join(', ')};
+  // Checklist point 2.4 (larmprov) follows the drawing results unless the technician has answered it manually.
+  const point=state.checks&&state.checks['2.4'];
+  if(point&&(point.status==null||point.auto)){
+   const faults=events.filter(e=>e.status==='Provad – anmärkning'||e.status==='Ej åtkomlig'),tested=events.filter(e=>statuses.slice(0,2).includes(e.status)),ref='Hänvisning: SBF 110:8 avsnitt 11.5.3 a–b (larmprov av detektorer).';
+   let filled;
+   if(!events.length)filled=point.auto?{...point,status:null,anm:'',auto:false}:point;
+   else if(faults.length)filled={...point,status:'anm',auto:true,kategori:point.auto&&point.kategori?point.kategori:'2',anm:faults.map(e=>(e.label||label(e.device||{},model))+': '+(e.status==='Ej åtkomlig'?'Ej åtkomlig – ':'')+(e.note||'anmärkning').replace(/[.;\s]+$/,'')).join('; ')+'. '+ref};
+   else filled={...point,status:'ok',auto:true,anm:tested.length+' detektorer provade utan anmärkning. '+ref};
+   next.checks={...state.checks,'2.4':filled};
+  }
+  return next;
  }
  function coverage(register,year,quarter){
   const y=Number(year),q=Number(quarter);if(!Number.isInteger(y)||y<2000||y>2200||!Number.isInteger(q)||q<1||q>4)throw Error('Välj år och kvartal.');

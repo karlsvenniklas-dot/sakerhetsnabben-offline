@@ -1,4 +1,4 @@
-# SäkerhetSnabben Offline 2.1
+# SäkerhetSnabben Offline 2.3
 
 Mobilanpassad app för kundobjekt, arbetsorder, brandlarmsprotokoll och detektorregister. Appen körs lokalt i webbläsaren utan konto eller ChatGPT-inloggning.
 
@@ -88,3 +88,37 @@ Kör `node test-health-check.cjs` för kärntest. Säkerhetskopiering och kontro
 Under **Objektkort → Detektorer på ritningen** finns **Sök liknande symboler offline**. Öppna en sparad PDF eller bild. Markera en tydlig detektorsymbol med två tryck på motsatta hörn. Appen letar efter liknande symboler på samma sida, helt lokalt i webbläsaren. Ingen bild, symbol eller anläggningsinformation skickas till en server vid denna funktion.
 
 Förslagen är visuella mönsterlikheter, inte bekräftade detektorer. Samma skala och orientering ger bäst resultat; roterade, skannade eller otydliga symboler kan missas. Annan grafik kan ge falska träffar. Använd granskningen för att flytta, ta bort eller lägga till symboler, koppla till befintliga detektorer eller skapa nya. Alla förslag måste godkännas manuellt och ingen provning registreras av symbolanalysen. Test på riktiga ritningar och fysisk iPhone i flygplansläge återstår.
+
+### Version 2.2 – läs in ritningen och provningsläge (offline)
+
+Under **Objektkort → Detektorer på ritningen**:
+
+1. **Läs in detektorer från PDF-ritningen (offline).** Välj ritningen och försättsbladets sida, tryck **Skanna PDF**. Appen läser PDF:ens text på enheten: adresser som `01.001`, sektionsetiketter (`Sektion 12`, `Sek 12`) och typer från försättsbladets tabell och teckenförklaring (rök/optisk, värme/termisk, multi, larmknapp …). Granska listan, rätta sektion/typ vid behov och spara. Nya detektorer läggs i registret och markeras på ritningen; befintliga kopplas, inget skrivs över. Ingen provning registreras. Fungerar på PDF:er med riktig text (CAD-export). Skannade ritningar saknar text – använd då symbolsökningen.
+2. **Provningsläge.** Välj arbetsorder och provare, tryck **Starta provningsläge** och tryck på en detektor. En ruta visar **✓ OK**, **✕ Fel** (kommentar krävs, snabbtexter finns) och **Ej åtkomlig**. Resultatet sparas direkt och kan ångras i några sekunder. Provaren kommer ihåg på enheten.
+3. **Procentruta överst.** Visar andel provat i valt kvartal mot minimikravet för kvartalsprov och, där regeln kräver det, årskravet. Automatiskt val enligt SBF 110:8 avsnitt 11.5.3: med larmadresser minst 2 % av detektorerna per kvartal (spritt över anläggningen och året); utan larmadresser minst en detektor i 10 % av sektionerna per kvartal och samtliga sektioner per år. SBF 110:7 (minst 25 % av sektionerna per kvartal, per år minst 5 % av detektorerna och samtliga sektioner) och eget krav enligt avtal kan väljas. Per sektion visas provade/totalt. **Klar – öppna protokollet** öppnar BL401 för arbetsordern, där provningarna redan finns med.
+
+Allt sker lokalt i webbläsaren. Kör `node test-drawing-text.cjs` för kärntest. Test på riktiga serviceritningar och iPad återstår.
+
+**Protokoll och regelhänvisningar.** Punkt 2.4 (larmprov) i BL401 fylls i från ritningens provningar så länge teknikern inte svarat själv: OK om alla provade detektorer var utan anmärkning, annars Anm. (kategori 2) med detektor, fel och hänvisning till SBF 110:8 avsnitt 11.5.3 a–b. Ändrar du svaret manuellt behålls ditt svar. De färdiga anmärkningarna i BL401 och i provningsrutan på ritningen har hänvisning till aktuellt avsnitt i SBF 110:8, som följer med i kommentaren.
+
+### Ritningar där texten är ritad som linjer (OCR)
+
+Många CAD-ritningar exporteras med texten omvandlad till linjer. Då finns ingen PDF-text att läsa. Läsmetoden **Automatisk** växlar då till bildigenkänning (OCR) med Tesseract, som ligger i appen (`tesseract/`, Apache 2.0, se licensfilerna där) och fungerar offline efter installationen (cirka 13 MB extra).
+
+- Varje sida läses först snabbt. Sidor med adresser läses sedan i högre upplösning i fyra delar, i två riktningar.
+- Försättsbladets sektionsförteckning läses och visas som redigerbar text (`3: 01.001-01.002, 01.015-01.016`). Kontrollera den mot försättsbladet och lägg till rader som inte lästs. Adresser som inte finns i förteckningen förväljs inte.
+- Förklaringar efter en adress, som "VD placerad i ventilationsaggregat" eller "Fläktstyrning", ger typ och placering. Adresser som bara finns i en förklaringslista förväljs inte.
+- Missade adresser läggs till med **Missad adress** och ett tryck på ritningen.
+- Testat på en riktig serviceritning (plan 1): 84 av 87 adresser hittades och sektionerna kom rätt efter granskning. Tid på dator cirka 1,5 minut för fem sidor; iPad är långsammare.
+
+Kör `node test-drawing-ocr.cjs` för kärntest. Kunddata och kundritningar läggs aldrig i repot.
+
+### Version 2.3 – läsbar ritning och markering av etikettrutan
+
+- Ritningen vrids automatiskt så att texten blir läsbar, oavsett hur PDF:en eller bilden laddades upp. Läsriktningen tas från PDF:ens text. Saknas text avgörs den med OCR på enheten, cirka 10 sekunder per sida första gången. Riktningen sparas per sida.
+- **↻ Vrid ritningen** vrider en kvarts varv åt gången. En riktning du väljer själv ersätts aldrig av den automatiska.
+- Bara visningen vrids. Markeringar och skanningar sparas i ritningens egna koordinater.
+- Detektorer som lästs in från ritningen markeras med en tonad ruta över adressetiketten i stället för en punkt: grön = provad OK, röd = anmärkning, gul = återstår. Detektorer som placerats för hand visas fortfarande som punkt.
+- Detektorer som lästes in innan 2.3 får rutor när ritningen skannas och sparas igen.
+
+Kör `node test-drawing-view.cjs` för vridning, klickpunkter och rutstorlek.
