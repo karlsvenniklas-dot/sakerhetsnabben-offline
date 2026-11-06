@@ -1,6 +1,6 @@
-# SäkerhetSnabben Offline 2.4
+# SäkerhetSnabben Offline 2.5
 
-Mobilanpassad app för kundobjekt, arbetsorder, brandlarmsprotokoll och detektorregister. Appen körs lokalt i webbläsaren utan konto eller ChatGPT-inloggning.
+Mobilanpassad app för brandlarm: kundobjekt, arbetsorder, brandlarmsprotokoll (BL401) och detektorregister. Appen körs lokalt i webbläsaren utan konto eller ChatGPT-inloggning.
 
 ## Publicera på GitHub Pages
 
@@ -134,3 +134,9 @@ Under **Objektkort → Detektorer på ritningen**, i procentrutan:
 - Gula rutor för återstående detektorer har nu ränder och mörk kant så att de syns även på gula ytor i ritningen.
 
 Kvartalsplanen är ett hjälpmedel för att sprida provningen. Kraven i procentrutan (SBF 110:7/110:8) räknas som tidigare. Kör `node test-quarter-plan.cjs` för kärntest.
+
+### Version 2.5 – bara brandlarm
+
+Appen är nu inriktad på brandlarm. BL402 inbrottslarm, BL445 lås och BL449 dörrautomatik går inte längre att skapa, varken från startsidan eller från objektkortet. Inbrottsfälten är borttagna från objektformuläret, objektimporten och `objektmall.csv`. Påminnelser om lås- och dörrevision visas inte längre.
+
+Inga sparade uppgifter raderas. Redan arkiverade protokoll av de borttagna typerna går fortfarande att öppna, och dokument som lagts under Inbrottslarm, Lås eller Dörrautomatik visas så länge de finns kvar. Värden i de gamla inbrottsfälten ligger kvar i objektet men visas inte.

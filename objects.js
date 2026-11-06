@@ -1,7 +1,7 @@
 /* Shared offline object schema and list import. No external dependencies. */
 (() => {
   'use strict';
-  const fields=[['ordernummer','Ordernummer'],['uppdragstyp','SK/KV/SB'],['anlNr','Objektnummer / anläggningsnummer'],['namn','Anläggningsnamn'],['adress','Gatuadress'],['central','Centralapparat'],['planeradTill','Planerad till'],['agare','Anläggningsägare'],['avtalNr','Avtalsnummer'],['kontakt','Kontaktperson'],['tele','Telefon kontaktperson'],['epost','E-post kontaktperson'],['skotare1','Anläggningsskötare 1'],['skotare1Tele','Telefon skötare 1'],['skotare1Epost','E-post skötare 1'],['skotare2','Anläggningsskötare 2'],['skotare2Tele','Telefon skötare 2'],['skotare2Epost','E-post skötare 2'],['undercentral','Undercentral'],['tablaBrandforsvar','Brandförsvarstablå'],['tablaLarmlagring','Larmlagringstablå'],['larmsandare','Larmsändare'],['larmcentral','Larmcentral'],['larmsandarNr','Larmsändarnummer'],['sektionerTotalt','Antal sektioner'],['systemInbrott','Inbrottssystem'],['larmsandarIdInbrott','Larmsändar-ID inbrott'],['detektorerInbrott','Antal detektorer'],['ovrigInfo','Övrig information']];
+  const fields=[['ordernummer','Ordernummer'],['uppdragstyp','SK/KV/SB'],['anlNr','Objektnummer / anläggningsnummer'],['namn','Anläggningsnamn'],['adress','Gatuadress'],['central','Centralapparat'],['planeradTill','Planerad till'],['agare','Anläggningsägare'],['avtalNr','Avtalsnummer'],['kontakt','Kontaktperson'],['tele','Telefon kontaktperson'],['epost','E-post kontaktperson'],['skotare1','Anläggningsskötare 1'],['skotare1Tele','Telefon skötare 1'],['skotare1Epost','E-post skötare 1'],['skotare2','Anläggningsskötare 2'],['skotare2Tele','Telefon skötare 2'],['skotare2Epost','E-post skötare 2'],['undercentral','Undercentral'],['tablaBrandforsvar','Brandförsvarstablå'],['tablaLarmlagring','Larmlagringstablå'],['larmsandare','Larmsändare'],['larmcentral','Larmcentral'],['larmsandarNr','Larmsändarnummer'],['sektionerTotalt','Antal sektioner'],['ovrigInfo','Övrig information']];
   const normalize=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
   const aliases={objektnummer:'anlNr',objektnr:'anlNr',anlaggningsnummer:'anlNr',anlaggningsnr:'anlNr',adress:'adress',modell:'central',modeller:'central',typ:'uppdragstyp',ordertyp:'uppdragstyp',telefon:'tele',telefonnummer:'tele',planeradtill:'planeradTill',anlaggningsnamn:'namn',namn:'namn'};
   for(const [key,label] of fields){aliases[normalize(key)]=key;aliases[normalize(label)]=key;}
@@ -30,7 +30,7 @@
       const matches=existing.filter(o=>String(o.anlNr||'').trim().toLocaleLowerCase('sv')===number);if(matches.length>1)throw Error('Flera sparade objekt har detta nummer. Rätta dem före import.');
       if(values.uppdragstyp){values.uppdragstyp=values.uppdragstyp.toUpperCase();if(!['SK','KV','SB'].includes(values.uppdragstyp))throw Error('Typ måste vara SK, KV eller SB.');}
       if(values.planeradTill)values.planeradTill=date(values.planeradTill);
-      for(const key of ['sektionerTotalt','detektorerInbrott'])if(values[key]&&!/^\d+$/.test(values[key]))throw Error('Antal ska vara ett heltal utan decimaler.');
+      for(const key of ['sektionerTotalt'])if(values[key]&&!/^\d+$/.test(values[key]))throw Error('Antal ska vara ett heltal utan decimaler.');
       const old=matches[0];const item={...Object.fromEntries(fields.map(([k])=>[k,''])),larmsandare:'Contal Cat12Ce',...old,...values};
       if(!item.namn)item.namn=item.adress||`Objekt ${item.anlNr}`;
       return {item,action:old?'Uppdateras':'Nytt'};
