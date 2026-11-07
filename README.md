@@ -1,4 +1,4 @@
-# SäkerhetSnabben Offline 2.5
+# SäkerhetSnabben Offline 2.5.1
 
 Mobilanpassad app för brandlarm: kundobjekt, arbetsorder, brandlarmsprotokoll (BL401) och detektorregister. Appen körs lokalt i webbläsaren utan konto eller ChatGPT-inloggning.
 
@@ -140,3 +140,16 @@ Kvartalsplanen är ett hjälpmedel för att sprida provningen. Kraven i procentr
 Appen är nu inriktad på brandlarm. BL402 inbrottslarm, BL445 lås och BL449 dörrautomatik går inte längre att skapa, varken från startsidan eller från objektkortet. Inbrottsfälten är borttagna från objektformuläret, objektimporten och `objektmall.csv`. Påminnelser om lås- och dörrevision visas inte längre.
 
 Inga sparade uppgifter raderas. Redan arkiverade protokoll av de borttagna typerna går fortfarande att öppna, och dokument som lagts under Inbrottslarm, Lås eller Dörrautomatik visas så länge de finns kvar. Värden i de gamla inbrottsfälten ligger kvar i objektet men visas inte.
+
+
+### Version 2.5.1 – dataintegritet och provningssäkerhet
+
+- Säkerhetskopior och objektpaket inkluderar även ritningarnas vyrotation (nyckeln `drawing-view:`). Äldre data behålls.
+- Ångra provning återställer även en orörd automatiskt skapad felpost i samma databastransaktion. Är felet redan ändrat stoppas ångringen och befintlig felhistorik skyddas.
+- Listan över kvarstående fel tar med öppna felärenden även om en senare provning är OK. Ett fel markeras inte som kontrollerat av att ett nytt prov sparas.
+- Årsberäkning enligt SBF 110:8 11.5.3 b visar minst 8 % adresserade detektorer utöver 2 % per kvartal. Översikten avser detektorprovning; övriga kontrollpunkter kräver separat bedömning.
+- Automatiska kvartalsförslag för färre än fyra sektioner har minst en planerad sektion i varje kvartal. Manuella fördelningar lämnas oförändrade.
+- PDF-text- och OCR-träffar börjar som ej granskade. Varje adress måste väljas individuellt. Ändras sektion, typ eller placering återgår raden till ej granskad. Massgodkännande har tagits bort.
+- Offlineinstallationen använder cacheversion 25 och rensar bara äldre appcacher när den nya versionen aktiveras. Den ändrar inte lokala kunduppgifter.
+
+Automatiska Node-tester täcker grundlogik och regressionsfall. Innan appen används skarpt ska säkerhetskopiering/återställning och OCR kontrolleras på fysisk enhet i flygplansläge. Tekniker måste verifiera det faktiska regelverket och provningens omfattning på varje objekt.

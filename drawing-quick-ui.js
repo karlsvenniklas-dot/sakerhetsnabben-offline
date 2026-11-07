@@ -185,7 +185,7 @@
     options(
       ruleSel,
       [
-        ["auto", "Automatiskt (110:8, efter om detektorerna har adress)"],
+        ["auto", "Automatiskt förslag (kontrollera regelval)"],
         ...Object.entries(core.RULES).map(([k, r]) => [k, r.label]),
         ["custom", "Eget krav (avtal)"],
       ],
@@ -228,7 +228,7 @@
       ruleNote,
       el(
         "p",
-        "Kraven är minimikrav för anläggningsskötarens kvartalsprov. En sektion räknas som provad när minst en detektor i den har provats. Avtal eller myndighet kan kräva mer. Larmdon, styrningar, larmöverföring, tablåer och batterier provas enligt protokollet.",
+        "Välj rätt regel för objektet. Auto är bara ett förslag. Översikten visar registrerad detektorprovning, inte ett intyg om regeluppfyllelse. Avtal och kravställare kan kräva mer. Larmdon, styrningar, larmöverföring, tablåer och batterier kontrolleras separat.",
         "dq-detail",
       ),
       sectionList,
@@ -244,7 +244,7 @@
       planSummary,
       el(
         "p",
-        "Sektionerna delas automatiskt i fyra grupper (sektion 1, 5, 9 … i kvartal 1, sektion 2, 6, 10 … i kvartal 2 osv.) så att alla sektioner provas under året och varje kvartal täcker hela anläggningen. Ändra kvartal för en sektion vid behov – ditt val sparas. Rött = inte provad på 12 månader.",
+        "Sektionerna fördelas som arbetsförslag över året. Små anläggningar kan få samma sektion planerad flera kvartal. Granska förslaget mot valt regelverk och antal detektorer; du kan justera manuellt. Rött = inte provad på 12 månader.",
         "dq-detail",
       ),
       planNote,
@@ -341,6 +341,7 @@
         quarter: quarter.value,
         plan: quarterPlan,
         refDate: refDate(),
+        issues: ctx.issues || [],
       });
       return qp.remainingText(r, {
         facility: [f.anlNr, f.namn].filter(Boolean).join(" "),
@@ -718,11 +719,7 @@
           toast(`${det.address(device, f.central)} · ${status}${warning}`, async () => {
             try {
               ctx.beforeSave();
-              await db.updateRecord("detectors:" + f.id, { devices: [], events: [] }, (r) => {
-                r.events = r.events.filter((e) => e.id !== id);
-                return r;
-              });
-              await window.serviceData?.syncIssues(f.id);
+              await window.serviceData.undoTest(f.id,id);
               toast("Ångrat: " + det.address(device, f.central));
             } catch (e) {
               toast("Kunde inte ångra: " + e.message);
@@ -903,7 +900,7 @@
           memory.scan = { docId, rows, snapshot, ocr: true, sections };
           sectionText.value = ocrApi.formatSections(sections);
           scanStatus.textContent =
-            `OCR: ${rows.length} adresser på ${drawn.length} sida/sidor, ${rows.filter((r) => r.approved).length} förvalda` +
+            `OCR: ${rows.length} adresser på ${drawn.length} sida/sidor, 0 granskade` +
             (sections.length ? `, ${sections.length} sektionsrader lästa från försättsbladet` : "") +
             ". Bildigenkänning kan läsa fel eller missa etiketter – granska listan och lägg till missade. " +
             warnings.slice(0, 2).join(" ");
@@ -916,7 +913,7 @@
             : `${rows.length} adresser hittades på ${pages.length} sida/sidor` +
               (cover.table.size ? `, ${cover.table.size} rader på försättsbladet` : "") +
               (cover.legend.length ? `. Typer i teckenförklaringen: ${cover.legend.join(", ")}` : "") +
-              ". Kontrollera och spara. " +
+              ". Granska varje adress och kryssa för innan sparande. " +
               warnings.slice(0, 3).join(" ");
         }
         renderReview();
@@ -938,7 +935,7 @@
         r.sektion = sektion || r.sektion;
         r.fromCover = !!sektion;
         r.flag = !sektion ? "Saknas i sektionsförteckningen" : r.inList ? "Bara i förklaringslista – placera rätt" : "";
-        r.approved = !!sektion && !r.inList;
+        r.approved = false;
       }
       renderReview();
     }
@@ -978,8 +975,8 @@
         existingId: existing?.id || "",
         fromCover: !!sektion,
         manual: true,
-        approved: true,
-        flag: "Tillagd manuellt",
+        approved: false,
+        flag: "Tillagd manuellt – granska och välj",
       });
       scanStatus.textContent = `${adding} tillagd på sida ${ctx.getPage()}.`;
       adding = "";
@@ -1008,10 +1005,6 @@
       bulkSec.placeholder = "Sektion";
       bulkSec.inputMode = "numeric";
       tools.append(
-        button("Markera alla", () => {
-          s.rows.forEach((r) => (r.approved = true));
-          renderReview();
-        }),
         button("Avmarkera alla", () => {
           s.rows.forEach((r) => (r.approved = false));
           renderReview();
@@ -1066,7 +1059,7 @@
         sec.inputMode = "numeric";
         sec.disabled = !!r.existingId;
         sec.setAttribute("aria-label", "Sektion");
-        sec.oninput = () => (r.sektion = sec.value.trim());
+        sec.oninput = () => { r.sektion = sec.value.trim(); r.approved = false; check.checked = false; paintPreview(); };
         const typ = options(
           el("select"),
           [["", "Välj typ"], ...core.TYPES.map(([t]) => [t, t])],
@@ -1074,12 +1067,12 @@
         );
         typ.disabled = !!r.existingId;
         typ.setAttribute("aria-label", "Typ");
-        typ.onchange = () => (r.typ = typ.value);
+        typ.onchange = () => { r.typ = typ.value; r.approved = false; check.checked = false; paintPreview(); };
         const place = el("input");
         place.value = r.placering;
         place.disabled = !!r.existingId;
         place.setAttribute("aria-label", "Placering");
-        place.oninput = () => (r.placering = place.value);
+        place.oninput = () => { r.placering = place.value; r.approved = false; check.checked = false; paintPreview(); };
         const cells = [check, String(r.page), r.slinga + "." + r.adress, sec, typ, place, r.existingId ? "Finns" : r.flag || (r.fromCover ? (r.ocr ? "Förteckning" : "Försättsblad") : "Ny")];
         for (const c of cells) {
           const td = el("td");

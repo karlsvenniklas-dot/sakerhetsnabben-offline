@@ -1,5 +1,5 @@
 'use strict';
-const CACHE='sn-offline-shell-v24';
+const CACHE='sn-offline-shell-v25';
 const FILES=['./','./index.html','./workspace.html','./engine.js','./engine.css','./workspace.css','./storage.js','./objects.js','./health-check.js','./orders.js','./detectors.js','./detectors-ui.js','./orders-ui.js','./import-ui.js','./shell.js','./shell.css','./manifest.webmanifest','./icon-192.png','./icon-512.png','./service-core.js','./service-ui.js','./service.css','./pdf-lib.min.js','./field-core.js','./field-ui.js','./ai-config.js','./drawing-ai-core.js','./offline-drawing-scan.js','./drawing-ai-ui.js','./drawing-text-core.js','./drawing-quick-ui.js','./drawing-ocr-core.js','./drawing-ocr.js','./drawing-view.js','./quarter-plan-core.js','./drawing-export.js','./tesseract/tesseract.min.js','./tesseract/worker.min.js','./tesseract/tesseract-core-simd-lstm.wasm.js','./tesseract/tesseract-core-lstm.wasm.js','./tesseract/eng.traineddata','./field.css','./pdf.min.mjs','./pdf.worker.min.mjs'];
 const urls=FILES.map(file=>new URL(file,self.registration.scope).href);
 self.addEventListener('install',event=>event.waitUntil((async()=>{
@@ -26,7 +26,12 @@ self.addEventListener('install',event=>event.waitUntil((async()=>{
   for(const client of clients)client.postMessage({type:'OFFLINE_INSTALL_ERROR',message:error.message});
   throw error;
 })));
-self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));
+self.addEventListener('activate',event=>event.waitUntil((async()=>{
+  await self.clients.claim();
+  // Only remove older static shells; never delete IndexedDB or unrelated caches.
+  const keys=await caches.keys();
+  await Promise.all(keys.filter(key=>key.startsWith('sn-offline-shell-')&&key!==CACHE).map(key=>caches.delete(key)));
+})()));
 self.addEventListener('message',event=>{if(event.data?.type==='ACTIVATE')self.skipWaiting();if(event.data?.type==='OFFLINE_VERSION')event.ports?.[0]?.postMessage({cache:CACHE});});
 self.addEventListener('fetch',event=>{
   if(event.request.method!=='GET')return;

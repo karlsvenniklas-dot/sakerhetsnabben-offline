@@ -1,0 +1,23 @@
+name: Test local app logic
+on:
+  push:
+    branches: [main, fix-integrity-v2-5-1]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  node-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run all regression tests
+        run: |
+          set -e
+          for file in test-*.cjs; do
+            echo "Running $file"
+            node "$file"
+          done
