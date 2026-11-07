@@ -8,7 +8,7 @@
     fault: { line: "#b42318", fill: "rgba(240,68,56,.42)" },
     remaining: { line: "#2b2100", fill: "rgba(255,200,40,.45)" },
   };
-  const LEGEND = "Grön = provad OK · Röd = anmärkning · Gul randig = återstår i kvartalet";
+  const LEGEND = "Grön = provad OK utan öppet fel · Röd = öppet fel eller anmärkning (även efter ny OK-provning) · Gul randig = återstår i kvartalet";
   const MAX_SIDE = 2200;
   const db = () => window.localData;
   const qp = () => window.quarterPlanData;

@@ -586,6 +586,8 @@
           "muted",
         ),
       );
+      const activeIssues=(ctx.issues||[]).filter(i=>i.group==='det:'+device.id+':'+device.generation&&i.status!=='Kontrollerad');
+      if(activeIssues.length)sheet.append(el("p","Kvarstående felärende: "+activeIssues.map(i=>i.status+(i.note?" – "+i.note:"")).join("; ")+". En OK-provning stänger inte felärendet automatiskt.","dq-left"));
       const ever = qp.lastTested(device, register.events),
         limit = qp.yearBefore(refDate());
       sheet.append(
