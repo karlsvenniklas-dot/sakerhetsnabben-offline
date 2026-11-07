@@ -66,6 +66,10 @@
     });
     const byQuarter = { 1: [], 2: [], 3: [], 4: [] };
     for (const r of rows) byQuarter[r.quarter].push(r.section);
+    // Small systems still require a planned detector test each quarter.
+    // Only propose repeats when all placements are automatic; keep overrides untouched.
+    if(rows.length>0 && rows.length<4 && !rows.some(r=>r.manual))
+      for(let q=1;q<=4;q++)if(!byQuarter[q].length)byQuarter[q].push(rows[(q-1)%rows.length].section);
     return { rows, byQuarter };
   }
   /* Store a hand-picked quarter; "auto" removes the choice. */
@@ -102,18 +106,32 @@
     return { limit, sections, stale };
   }
 
-  /* Devices whose latest result is a remark or "not accessible". */
-  function openFaults(register, upTo) {
-    const out = [];
-    for (const d of register.devices || []) {
-      const e = testsOf(d, register.events, upTo).find((x) => x.status !== "Inte provad");
-      if (e && OPEN.includes(e.status)) out.push({ device: d, event: e });
+  /* Use unresolved fault records as well as the latest detector result.
+     An OK test does not itself close an issue. */
+  function openFaults(register, upTo, issues = []) {
+    const out=[],activeGroups=new Set();
+    for(const issue of issues || []){
+      if(!issue || !['Öppen','Åtgärdad'].includes(issue.status))continue;
+      if(upTo && issue.createdAt && issue.createdAt.slice(0,10)>upTo)continue;
+      const group=String(issue.group||''),match=group.match(/^det:(.+):(\d+)$/);
+      const device=match?(register.devices||[]).find(d=>d.id===match[1]&&d.generation===Number(match[2])):null;
+      if(group)activeGroups.add(group);
+      out.push({device,issue,event:null});
     }
-    return out.sort((a, b) => bySection(sectionOf(a.device), sectionOf(b.device)));
+    for(const d of register.devices || []){
+      const e=testsOf(d,register.events,upTo).find(x=>x.status!=='Inte provad');
+      if(!e||!OPEN.includes(e.status))continue;
+      const group='det:'+d.id+':'+d.generation;
+      if(activeGroups.has(group))continue;
+      const closed=(issues||[]).some(i=>i.group===group&&i.status==='Kontrollerad'&&
+        (i.timeline||[]).some(t=>t.status==='Kontrollerad'&&String(t.at||'')>=String(e.recordedAt||'')));
+      if(!closed)out.push({device:d,event:e});
+    }
+    return out.sort((a,b)=>bySection(sectionOf(a.device),sectionOf(b.device)));
   }
 
   /* Everything that remains, for the customer or the next visit. */
-  function remaining(register, { year, quarter, plan, refDate }) {
+  function remaining(register, { year, quarter, plan, refDate, issues = [] }) {
     const { from, to } = quarterRange(year, quarter),
       upTo = refDate && refDate < to ? refDate : to,
       testedIn = (s, a, b) =>
@@ -132,7 +150,7 @@
       yearLeft: p.rows.map((r) => r.section).filter((s) => !testedIn(s, `${year}-01-01`, upTo)),
       stale: h.stale,
       limit: h.limit,
-      faults: openFaults(register, upTo),
+      faults: openFaults(register, upTo, issues),
       totalSections: p.rows.length,
     };
   }
@@ -155,7 +173,9 @@
       ...(r.faults.length
         ? r.faults.map(
             (x) =>
-              `  ${label(x.device)} – ${x.event.date} ${x.event.status === "Ej åtkomlig" ? "ej åtkomlig" : "anmärkning"}${x.event.note ? ": " + x.event.note : ""}`,
+              x.issue
+                ? `  ${x.device ? label(x.device) : (x.issue.title || 'Felärende')} – ${x.issue.status}${x.issue.note ? ': ' + x.issue.note : ''}`
+                : `  ${label(x.device)} – ${x.event.date} ${x.event.status === "Ej åtkomlig" ? "ej åtkomlig" : "anmärkning"}${x.event.note ? ": " + x.event.note : ""}`,
           )
         : ["  Inga"]),
     ];

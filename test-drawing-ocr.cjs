@@ -63,7 +63,7 @@ const pages = [{ page: 2, labels: [...read.labels, { address: '01.003', x: 0.4, 
 const { rows, warnings } = ocr.candidates(pages, edited, register, { typ: 'Rökdetektor', sektion: '' }, api, text);
 const by = (a) => rows.find((r) => r.slinga + '.' + r.adress === a);
 assert.equal(by('01.007').sektion, '1');
-assert.equal(by('01.007').approved, true);
+assert.equal(by('01.007').approved, false);
 assert.equal(by('01.008').existingId, 'old');
 assert.equal(by('01.008').placering, 'Kontor');
 assert.equal(by('01.232').sektion, '7');
@@ -77,8 +77,10 @@ assert.equal(rows.filter((r) => r.slinga + '.' + r.adress === '01.204').length, 
 
 // The rows can be saved with the shared writer
 const data = { facilities: JSON.stringify([{ id: 'f' }]), 'docs:f': JSON.stringify([{ id: 'doc' }]), 'docfile:doc': '"data:application/pdf;base64,x"', 'detectors:f': JSON.stringify(register) };
-const saved = text.writes(data, 'f', 'doc', rows, '', api);
-assert.equal(saved.created, rows.filter((r) => r.approved && !r.existingId).length);
+assert.throws(()=>text.writes(data,'f','doc',rows,'',api),/Välj minst en/);
+const reviewed=rows.map(r=>({...r,approved:!!r.sektion && r.fromCover && !r.inList}));
+const saved = text.writes(data, 'f', 'doc', reviewed, '', api);
+assert.equal(saved.created, reviewed.filter((r) => r.approved && !r.existingId).length);
 assert.equal(JSON.parse(saved.writes['detectors:f']).events.length, 0);
 
 console.log('PASS: OCR digit fixes, labels incl. vertical/stacked/legend lines, pass merging, section table with wraps/lost dots/missing row, edited table, candidates with sections/legend types/flags, saving.');

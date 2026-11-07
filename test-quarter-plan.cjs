@@ -66,3 +66,12 @@ const later = qp.remaining({ devices, events: [...events, test('c', '2026-06-01'
 assert.deepEqual(later.plannedLeft, ['2', '10']);
 
 console.log('PASS: quarter plan, manual quarter, 12-month history, open faults, remaining list.');
+
+const small=qp.planQuarters([dev('x','1'),dev('y','2'),dev('z','3')]);
+assert.ok([1,2,3,4].every(q=>small.byQuarter[q].length>0),'small installations need a proposed test every quarter');
+const faultsReg={devices:[dev('d1','1')],events:[test('d1','2026-11-01','Provad – anmärkning','Fel'),test('d1','2026-11-02','Provad – OK')]};
+const issue={id:'issue1',group:'det:d1:1',status:'Öppen',title:'Fel',note:'Kvarstår',createdAt:'2026-11-01T12:00:00Z'};
+const outstanding=qp.remaining(faultsReg,{year:2026,quarter:4,refDate:'2026-11-07',issues:[issue]});
+assert.equal(outstanding.faults.length,1,'an OK test does not close a documented fault');
+assert.match(qp.remainingText(outstanding,{year:2026,quarter:4}),/Kvarstår/);
+assert.equal(qp.remaining(faultsReg,{year:2026,quarter:4,refDate:'2026-11-07',issues:[{...issue,status:'Kontrollerad',timeline:[{status:'Kontrollerad',at:'2026-11-03T12:00:00Z'}]}]}).faults.length,0);

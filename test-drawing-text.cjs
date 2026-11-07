@@ -51,14 +51,16 @@ assert.equal(r6.typ, 'Rökdetektor', 'default type');
 
 // Writes: creates devices + pins, links existing, idempotent on rescan, never creates test events
 const data = { facilities: JSON.stringify([{ id: 'f' }]), 'docs:f': JSON.stringify([{ id: 'doc' }]), 'docfile:doc': '"data:application/pdf;base64,x"', 'detectors:f': JSON.stringify(register) };
-const first = core.writes(data, 'f', 'doc', rows, '', api);
+assert.ok(rows.every(r=>r.approved===false),'PDF labels are proposals only');
+const reviewedRows=rows.map(r=>({...r,approved:true}));
+const first = core.writes(data, 'f', 'doc', reviewedRows, '', api);
 assert.equal(first.created, 3);
 assert.equal(first.pinned, 4);
 const reg = JSON.parse(first.writes['detectors:f']);
 assert.equal(reg.devices.length, 4);
 assert.equal(reg.events.length, 0);
 assert.equal(api.address(reg.devices.find((d) => d.adress === '001'), ''), '01.001');
-const again = core.writes({ ...data, ...first.writes }, 'f', 'doc', rows, '', api);
+const again = core.writes({ ...data, ...first.writes }, 'f', 'doc', reviewedRows, '', api);
 assert.equal(again.created, 0);
 assert.equal(again.pinned, 0);
 assert.equal(JSON.parse(again.writes['fieldwork:f']).pins.length, 4);
@@ -74,6 +76,10 @@ let p = core.progress(cov, { rule: 'auto' }, adr);
 assert.equal(p.rule, '110-8-adr');
 assert.equal(p.quarter.needed, 3);
 assert.equal(p.quarter.met, true);
+assert.equal(p.yearChecks[0].needed,10);
+assert.equal(p.yearMet,true);
+assert.equal(core.progress({ ...cov, year: {devices: 7,sections: 20} }, {rule:'110-8-adr'}, adr).yearMet,false);
+assert.equal(core.progress({ ...cov, year: {devices: 0,sections: 0} }, {rule:'110-8-adr'}, adr).yearMet,false);
 assert.equal(core.progress({ ...cov, quarter: { devices: 2, sections: 2 } }, { rule: 'auto' }, adr).quarter.met, false);
 // small systems still need at least one detector
 assert.equal(core.progress({ ...cov, totalDevices: 7 }, { rule: '110-8-adr' }).quarter.needed, 1);

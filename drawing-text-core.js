@@ -285,7 +285,7 @@
             : {}),
           existingId: existing?.id || "",
           fromCover: !!cover?.table?.has(key(l.slinga, l.adress)),
-          approved: true,
+          approved: false,
         });
       }
     }
@@ -394,8 +394,8 @@
       label: "SBF 110:8 – med larmadresser",
       ref: "SBF 110:8 avsnitt 11.5.3 b",
       quarter: { basis: "devices", percent: 2 },
-      year: [],
-      note: "Minst 2 % av detektorerna per kvartal. Provningen ska spridas över anläggningen och året så att olika detektorer provas.",
+      year: [{ basis: "devices", percent: 8 }],
+      note: "Minst 2 % av detektorerna per kvartal och minst 8 % under året (SBF 110:8 11.5.3 b). Kontrollera övriga krav separat.",
     },
     "110-8-sek": {
       label: "SBF 110:8 – utan larmadresser (sektioner)",
@@ -465,7 +465,7 @@
       quarter,
       year: check(c.year, r.quarter),
       yearChecks,
-      yearMet: yearChecks.every((y) => y.met),
+      yearMet: yearChecks.length ? yearChecks.every((y) => y.met) : null,
     };
   }
 

@@ -227,7 +227,7 @@
           conf: l.conf,
           // addresses outside the section table are probably misreadings
           inList,
-          approved: inTable && !inList && (l.conf >= 40 || !!sektion),
+          approved: false,
           flag: !inTable ? "Saknas i sektionsförteckningen" : inList ? "Bara i förklaringslista – placera rätt" : "",
         });
       }
