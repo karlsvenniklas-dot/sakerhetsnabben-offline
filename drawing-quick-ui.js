@@ -543,11 +543,11 @@
 
     /* ---------- technician memory (this device only) ---------- */
     try {
-      if (!technician.value) technician.value = localStorage.getItem("dq-technician") || "";
+      if (!technician.value) technician.value = localStorage.getItem((new URLSearchParams(location.search).get('demo')==='1'?'demo-':'')+"dq-technician") || "";
     } catch {}
     technician.addEventListener("change", () => {
       try {
-        localStorage.setItem("dq-technician", technician.value.trim());
+        localStorage.setItem((new URLSearchParams(location.search).get('demo')==='1'?'demo-':'')+"dq-technician", technician.value.trim());
       } catch {}
     });
 

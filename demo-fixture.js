@@ -51,7 +51,8 @@
   async function seed(){
     if(new URLSearchParams(location.search).get('demo')!=='1')throw Error('Övningsdata får endast skapas i övningsläget.');
     const db=window.localData, before=await db.snapshot();
-    if(Object.keys(before).length)return false;
+    const oldFacilities=JSON.parse(before.facilities||'[]'),oldOrders=JSON.parse(before.workorders||'[]');
+    if(oldFacilities.some(f=>f.id===facilityId))return false;
     const textPdf=await samplePdf(false),ocrPdf=await samplePdf(true),
       date=new Date().toISOString().slice(0,10),
       facility={id:facilityId,anlNr:'DEMO-0001',namn:'DEMO - Fiktivt brandlarmsobjekt',
@@ -68,8 +69,8 @@
       ],
       issue={id:'demo-issue',group:'det:demo-d2:1',sources:['det:demo-test-fel'],title:'DEMO 01.002',note:'Övningsfel (fiktivt)',status:'Öppen',createdAt:new Date().toISOString(),timeline:[{at:new Date().toISOString(),status:'Öppen',note:'Fiktiv anmärkning',technician:'Övning'}]};
     const write={
-      facilities:JSON.stringify([facility]),
-      workorders:JSON.stringify([{id:'demo-order',facilityId,ordernummer:'DEMO-2026-001',uppdragstyp:'KV',planeradTill:date,status:'Påbörjat',notes:'Endast övning'}]),
+      facilities:JSON.stringify([...oldFacilities,facility]),
+      workorders:JSON.stringify([...oldOrders,{id:'demo-order',facilityId,ordernummer:'DEMO-2026-001',uppdragstyp:'KV',planeradTill:date,status:'Påbörjat',notes:'Endast övning'}]),
       'history-index':'[]',
       ['docs:'+facilityId]:JSON.stringify([
         {id:'demo-pdf-text',mime:'application/pdf',description:'DEMO: planritning med PDF-text',namn:'DEMO TEXT'},
