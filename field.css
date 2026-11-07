@@ -29,3 +29,12 @@
 .drawing-attachment img{max-width:100%}
 @media print{.drawing-attachment figure{break-inside:avoid}}
 .dq-plan .dq-table-wrap{max-height:35vh}
+
+/* Drawing discrepancies deliberately use pins distinct from detector test results. */
+.drawing-discrepancies{margin:14px 0;padding:12px;border:1px solid #afbac7;border-radius:10px;background:#f6f9fa}
+.drawing-discrepancies .drawing-discrepancies-list .job-card{border:1px solid #aab8c1;padding:12px;margin:12px 0;border-radius:9px}
+.drawing-discrepancies .button-row{display:flex;gap:8px;flex-wrap:wrap;align-items:end}
+.drawing-pin.drawing-discrepancy-pin{background:#6937a7!important;color:#fff!important;border:3px double #fff!important;z-index:6;font-weight:800;min-width:34px;min-height:34px}
+.drawing-pin.drawing-discrepancy-pin.deviation-actioned{background:#aa6200!important}
+.drawing-pin.drawing-discrepancy-pin.deviation-checked{background:#536673!important}
+.drawing-stage.dq-quick .drawing-pin.drawing-discrepancy-pin{outline-color:#824dcc}
