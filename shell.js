@@ -52,8 +52,25 @@
     else if(state.state==='saved'){$('save-state').textContent='Sparat på telefonen';clearTimeout(refreshTimer);refreshTimer=setTimeout(refresh,200);}
   });
   function download(name,content){const url=URL.createObjectURL(new Blob([content],{type:'application/json'}));const a=element('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);}
-  async function backup(){try{const data=await window.localData.exportBackup();download(`SakerhetSnabben_${new Date().toISOString().slice(0,10)}.json`,JSON.stringify(data,null,2));try{localStorage.setItem('offline-backup-export',data.exportedAt);}catch{}updateBackupDate();window.dispatchEvent(new Event('backup-exported'));toast('Säkerhetskopian är exporterad. Kontrollera att filen sparades i Filer.');}catch{toast('Kunde inte skapa säkerhetskopian. Ingenting har raderats.');}}
-  function updateBackupDate(){let date;try{date=localStorage.getItem('offline-backup-export');}catch{}$('backup-date').textContent=date?`Senast exporterad: ${new Date(date).toLocaleString('sv-SE')}. Kontrollera att filen finns kvar.`:'Ingen säkerhetskopia exporterad på den här enheten ännu.';}
+  async function backup(){
+ try{
+   const data=await window.backupAudit.seal(await window.localData.exportBackup());
+   const check=await window.backupAudit.verify(data);
+   if(!check.ok)throw Error(check.errors.slice(0,2).join('; '));
+   download(`SakerhetSnabben_${new Date().toISOString().slice(0,10)}.json`,JSON.stringify(data,null,2));
+   try{localStorage.setItem('offline-backup-export',data.exportedAt);}catch{}
+   updateBackupDate();window.dispatchEvent(new Event('backup-exported'));
+   $('backup-check-result').textContent='Exporten skapades med kontrollsumma: '+check.summary.objects+' objekt, '+check.summary.documents+' dokument, '+check.summary.detectors+' detektorer. Välj sedan filen från Filer för att kontrollera att den verkligen sparades.';
+   toast('Exportfilen är kontrollerad före nedladdning. Kontrollera den sparade filen separat.');
+ }catch(error){$('backup-check-result').textContent='Export avbruten: '+error.message;toast('Säkerhetskopian kunde inte skapas. Ingen data raderades.');}
+}
+  function updateBackupDate(){
+ let exported='',verified='';
+ try{exported=localStorage.getItem('offline-backup-export');verified=localStorage.getItem('offline-backup-verified');}catch{}
+ const overdue=verified&&Date.now()-Date.parse(verified)>30*86400000;
+ $('backup-date').textContent=(exported?'Senast exporterad: '+new Date(exported).toLocaleString('sv-SE')+'. ':'Ingen export registrerad. ')+
+ (verified?'Senast verifierad från sparad fil: '+new Date(verified).toLocaleString('sv-SE')+(overdue?' (äldre än 30 dagar).':' .'):'Ingen sparad säkerhetskopia har verifierats från Filer.');
+}
   async function updateStorage(){try{const estimate=await navigator.storage?.estimate?.();$('storage-usage').textContent=estimate?`Appens webbplats använder cirka ${((estimate.usage||0)/1048576).toFixed(1)} MB, inklusive offlinefiler. Tillgänglig kvot: cirka ${((estimate.quota||0)/1048576).toFixed(0)} MB.`:'Telefonen visar inte lagringsutrymme för den här appen.';if(await navigator.storage?.persisted?.())$('persist-state').textContent='Beständig lagring är beviljad. Fortsätt ändå att ta säkerhetskopior.';}catch{$('storage-usage').textContent='Lagringsuppgifter är inte tillgängliga.';}}
   async function verifyCache(){
     let count=0;
@@ -92,7 +109,20 @@
   document.querySelectorAll('[data-nav]').forEach(b=>b.onclick=()=>{const target=b.dataset.nav;if(target==='objects')openWork('OBJEKT');else if(target==='protocols')openWork('SNABB');else navigate(target);});
   $('connection').onclick=()=>navigate('settings');$('choose-object').onclick=()=>openWork('OBJEKT');$('manage-objects').onclick=()=>openWork('OBJEKT');$('quick-protocol').onclick=()=>openWork('SNABB');$('back-home').onclick=()=>navigate('home');document.querySelector('.brand').onclick=event=>{event.preventDefault();navigate('home');};$('search').oninput=renderObjects;$('object-sort').onchange=renderObjects;window.addEventListener('objects-imported',()=>{engineReady=false;frame.src='./workspace.html';refresh();});
   $('home-backup').onclick=backup;$('export-backup').onclick=backup;$('import-backup').onclick=()=>$('backup-file').click();
-  $('backup-file').onchange=async event=>{const file=event.target.files[0];if(!file)return;try{if(file.size>150*1048576)throw new Error('Filen är för stor för säker import på telefonen.');const data=JSON.parse(await file.text());if(!confirm('Importera säkerhetskopian? Poster med samma ID ersätts. Spara först en säkerhetskopia av nuvarande data.'))return;const count=await window.localData.restore(data);engineReady=false;frame.src='./workspace.html';await refresh();window.dispatchEvent(new Event('objects-imported'));toast(`${count} poster importerade.`);}catch(error){toast(error.message||'Importen misslyckades.');}finally{event.target.value='';}};
+  $('verify-backup').onclick=()=>$('verify-backup-file').click();
+  $('verify-backup-file').onchange=async event=>{
+    const file=event.target.files?.[0];if(!file)return;
+    try{
+      if(file.size>150*1048576)throw Error('Filen är för stor för kontroll på telefonen.');
+      const payload=JSON.parse(await file.text()),result=await window.backupAudit.verify(payload);
+      if(!result.ok)throw Error(result.errors.slice(0,3).join('; '));
+      localStorage.setItem('offline-backup-verified',new Date().toISOString());
+      $('backup-check-result').textContent='Sparad fil verifierad: '+result.summary.objects+' objekt, '+result.summary.documents+' dokument, '+result.summary.detectors+' detektorer och '+result.summary.reports+' protokoll. '+(result.hasChecksum?'SHA-256 matchar.':'Äldre fil utan kontrollsumma: endast struktur kontrollerad.');
+      updateBackupDate();toast('Den valda säkerhetskopian går att läsa.');
+    }catch(e){$('backup-check-result').textContent='Kontroll misslyckades: '+e.message;toast('Säkerhetskopian kunde inte verifieras.');}
+    finally{event.target.value='';}
+  };
+  $('backup-file').onchange=async event=>{const file=event.target.files[0];if(!file)return;try{if(file.size>150*1048576)throw new Error('Filen är för stor för säker import på telefonen.');const data=JSON.parse(await file.text());const check=await window.backupAudit.verify(data);if(!check.ok)throw Error('Säkerhetskopian är skadad: '+check.errors.slice(0,2).join('; '));if(!confirm('Importera säkerhetskopian? Poster med samma ID ersätts. Spara först en säkerhetskopia av nuvarande data.'))return;const count=await window.localData.restore(data);engineReady=false;frame.src='./workspace.html';await refresh();window.dispatchEvent(new Event('objects-imported'));toast(`${count} poster importerade.`);}catch(error){toast(error.message||'Importen misslyckades.');}finally{event.target.value='';}};
   async function runDataCheck(){
     const button=$('run-data-check');button.disabled=true;
     $('data-check-summary').textContent='Läser lokala register…';
