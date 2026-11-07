@@ -26,3 +26,22 @@ assert.match(file,/"'\+formel"/);
 assert.match(file,/"'-risk"/);
 assert.match(file,/"Test;Objekt"/);
 console.log('PASS: discrepancy data, immutable follow-up, transitions, CSV and formula injection defense.');
+
+const fs=require('node:fs'),vm=require('node:vm');
+const sandbox={window:{drawingDiscrepancies:api}};
+vm.runInNewContext(fs.readFileSync(__dirname+'/field-core.js','utf8'),sandbox);
+const fields=sandbox.window.fieldData;
+assert.doesNotThrow(()=>fields.validateField({visits:[],materials:[],plans:[],pins:[],prep:''}));
+const record=fields.empty();record.deviations.push(example);
+assert.doesNotThrow(()=>fields.validateField(record));
+const payload={
+ facilities:JSON.stringify([{id:'f',namn:'Demoobjekt'}]),
+ workorders:'[]','history-index':'[]',
+ 'fieldwork:f':JSON.stringify(record)
+};
+const pkg=fields.packageObject(payload,'f');
+assert.equal(JSON.parse(pkg.data['fieldwork:f']).deviations.length,1,'the object export includes discrepancies');
+fields.validatePackage(pkg);
+assert.match(fs.readFileSync(__dirname+'/field-ui.js','utf8'),/discrepancyUI\?\.place\(e\)/);
+assert.match(fs.readFileSync(__dirname+'/field-ui.js','utf8'),/RITNINGSAVVIKELSER ATT FÖLJA UPP/);
+console.log('PASS: fieldwork compatibility, object-package export and on-drawing integration.');

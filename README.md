@@ -1,4 +1,4 @@
-# SäkerhetSnabben Offline 2.6.0
+# SäkerhetSnabben Offline 2.7.0
 
 Mobilanpassad app för brandlarm: kundobjekt, arbetsorder, brandlarmsprotokoll (BL401) och detektorregister. Appen körs lokalt i webbläsaren utan konto eller ChatGPT-inloggning.
 
@@ -171,3 +171,16 @@ Automatiska Node-tester täcker grundlogik och regressionsfall. Innan appen anv�
 - Offlinecache v27 omfattar alla nya moduler och övningsläget.
 
 **Kvarstående kontroll:** Öppna övningsläget på en fysisk iPhone, testa båda ritningarna i flygplansläge, kontrollera redovisad risk/typ samt exportera och verifiera en säkerhetskopia från Filer. Ingen automatiserad CI-körning kan garantera att Safari kan utföra OCR i verklig miljö. Bekräfta alltid provningar mot originalritning och anläggning.
+
+
+### Version 2.7.0 – ritningsavvikelser från fältet
+
+- Under **Objekt → Detektorer på ritningen** finns **2a · Avvikelser mellan ritning och verklighet**. Registrera *Detektor saknas på plats*, *Fel adress på ritning*, *Detektor flyttad*, *Detektor finns men saknas på ritning*, *Fel sektion på ritning* eller *Annan ritningsavvikelse*.
+- Ange tekniker och beskrivning. Välj eventuell detektor och arbetsorder. Spara utan position eller välj **Markera plats på ritningen** och tryck på aktuell ritning. Markeringar är separata från detektorer och använder en egen färg.
+- Varje avvikelse har separat uppföljning **Öppen → Åtgärdad → Kontrollerad**, samt möjlighet att återöppna med obligatorisk kommentar. Alla statusändringar sparas med tekniker, tid och kommentar. Tidigare historik kan visas men inte raderas via avvikelsepanelen.
+- Filtrera avvikelser och exportera till **CSV** för arbetslista eller **JSON** med hela händelsehistoriken. CSV-exporten skyddar mot kalkylarksformler i fritext.
+- Öppna avvikelser kommer med i **Besöksunderlag inför nästa besök**. De sparas i `fieldwork:<objekt-ID>` och följer därmed med i objektpaket, fullständig säkerhetskopia och tidigare sparstruktur utan migrering. Gamla objekt utan avvikelselista fungerar som tidigare.
+- Avvikelserna är uttryckligen **inte detektorprovningar** och stänger inte automatiskt felärenden. Inga produktionsuppgifter tas bort.
+- Offline-cache v28 inkluderar de nya modulerna och deras data valideras innan sparande/import.
+
+**Fälttest återstår:** Kontrollera ritningsmarkeringarnas lägen på roterade PDF:er på iPhone/iPad, offlineexport till Filer och uppföljning i övningsläget innan användning som skarp dokumentation.
