@@ -1096,29 +1096,45 @@
         layer.append(b);
       }
     }
+    /* A second, explicit review gate before any real data is changed. */
     async function commit() {
-      const s = memory.scan;
-      if (!s) return;
-      saveBtn.disabled = true;
-      try {
-        const result = core.writes(s.snapshot, f.id, s.docId, s.rows, f.central, det);
-        ctx.beforeSave();
-        await db.commitRecords(s.snapshot, result.writes);
-        memory.scan = null;
-        ctx.reviewing(false);
-        ctx.saved(
-          `Ritningen är inläst: ${result.created} nya detektorer, ${result.pinned} nya markeringar` +
-            (result.moved ? `, ${result.moved} flyttade` : "") +
-            ". Starta provningsläget och tryck på en detektor.",
-        );
-      } catch (e) {
-        scanStatus.textContent =
-          e.message +
-          (/ändrats/.test(e.message) ? " Skanna PDF:en igen." : "");
-        ctx.afterError();
-      } finally {
-        saveBtn.disabled = false;
+      const proposal=memory.scan;
+      if(!proposal)return;
+      let result,report;
+      try{
+        result=core.writes(proposal.snapshot,f.id,proposal.docId,proposal.rows,f.central,det);
+        report=window.drawingReview.summary(proposal.rows);
+      }catch(e){scanStatus.textContent="Kan inte spara ännu: "+e.message;return;}
+      const wrap=el("div",undefined,"dq-sheet-wrap"),sheet=el("div",undefined,"dq-sheet");
+      sheet.setAttribute("role","dialog");sheet.setAttribute("aria-modal","true");
+      sheet.setAttribute("aria-label","Sista kontroll före ritningsimport");
+      sheet.append(el("h3","Granska före sparning"),
+        el("p",report.selected+" valda markeringar · "+result.created+" nya detektorer · "+report.selectedConflicts+" träffar med extra kontrollbehov."),
+        el("p","Jämför markerad adress, detektortyp och sektion med originalritningen. OCR kan läsa fel även när adressen finns i sektionsförteckningen.","dq-detail"));
+      const listing=el("div",undefined,"dq-table-wrap"),list=el("ul");
+      for(const item of report.items.filter(i=>i.selected).slice(0,120)){
+        const r=proposal.rows.find(row=>row.id===item.id);
+        list.append(el("li",item.address+" · sida "+item.page+" · "+(r?.typ||"OKÄND TYP")+" · sektion "+(r?.sektion||"?")+(item.problems.length?" · KONTROLLERA: "+item.problems.join("; "):"")));
       }
+      if(report.selected>120)list.append(el("li","Ytterligare "+(report.selected-120)+" adresser finns i granskningslistan bakom denna vy."));
+      listing.append(list);sheet.append(listing);
+      const label=el("label"),confirmed=el("input");confirmed.type="checkbox";
+      label.append(confirmed,document.createTextNode(" Jag har jämfört de valda detektorerna med ritningen."));
+      const approve=button("Bekräfta och spara",async()=>{
+        if(memory.scan!==proposal){wrap.remove();scanStatus.textContent="Granskningen ändrades. Börja om.";return;}
+        approve.disabled=true;saveBtn.disabled=true;
+        try{
+          ctx.beforeSave();
+          await db.commitRecords(proposal.snapshot,result.writes);
+          memory.scan=null;wrap.remove();ctx.reviewing(false);
+          ctx.saved("Ritningen är inläst: "+result.created+" nya detektorer, "+result.pinned+" markeringar. Ingen provning har registrerats.");
+        }catch(e){
+          scanStatus.textContent="Kunde inte spara: "+e.message;ctx.afterError();approve.disabled=false;
+        }finally{saveBtn.disabled=false;}
+      },"primary");
+      approve.disabled=true;confirmed.onchange=()=>approve.disabled=!confirmed.checked;
+      sheet.append(label,approve,button("Tillbaka till granskningslistan",()=>wrap.remove()));
+      wrap.append(sheet);document.body.append(wrap);
     }
 
     paintQuick();
