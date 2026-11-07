@@ -1,4 +1,4 @@
-# SäkerhetSnabben Offline 2.5.2
+# SäkerhetSnabben Offline 2.6.0
 
 Mobilanpassad app för brandlarm: kundobjekt, arbetsorder, brandlarmsprotokoll (BL401) och detektorregister. Appen körs lokalt i webbläsaren utan konto eller ChatGPT-inloggning.
 
@@ -159,3 +159,15 @@ Automatiska Node-tester täcker grundlogik och regressionsfall. Innan appen anv�
 - Ångra fungerar även när provningen lade till en ny registrering på ett redan öppet fel. Bara den registreringen tas bort, och resten av felhistoriken lämnas orörd. Har felet fått ny status efter provningen stoppas ångringen som förut.
 - OCR- och PDF-granskningen har knappen "Markera alla som finns i sektionsförteckningen". Den kryssar bara för rader som bekräftas av sektionsförteckningen. Manuellt tillagda adresser och adresser som bara finns i förklaringslistan måste fortfarande väljas en och en.
 - Cacheversion 26.
+
+### Version 2.6.0 – säkrare ritningsimport, kontrollerbara backuper och övningsläge
+
+- Nya offline-modulen `drawing-review-core.js` identifierar okända typer, saknade sektioner, osäkra OCR-träffar (<85), dubblettadresser mellan ritningssidor och adresser som inte stämmer mot sektionsförteckningen. Den visar risker före importen.
+- När typ saknas väljs inte längre Rökdetektor automatiskt. Ny detektor måste ha manuellt verifierad typ och sektion innan den kan sparas.
+- Snabbmarkering kräver att användaren bekräftat kontroll av sektionsförteckningen, och begränsas till tydliga, kompletta träffar. Innan lagring visas en andra granskningsvy där användaren aktivt måste bekräfta.
+- Säkerhetskopior förseglas med SHA-256 och kontrolleras före export/import. Knappen **Kontrollera sparad fil** läser tillbaka vald fil från enheten och visar datum, antal objekt, dokument, detektorer och protokoll. Äldre kopior utan kontrollsumma kan fortfarande granskas med begränsad garanti. Kontrollsumman skyddar mot oavsiktlig skada, inte avsiktlig förfalskning.
+- Provningsgränssnittet förklarar att en godkänd ny provning inte automatiskt stänger tidigare öppna fel. Märkta ritningars färgförklaring gör skillnaden tydlig.
+- **Övningsläge** på `?demo=1` använder IndexedDB `sakerhetsnabben-demo-v1`, helt skild från produktionsdatabasen. Påhittat objekt, övningsarbetsorder, felärende och två lokalt genererade PDF-filer (text-PDF och bildbaserad OCR-PDF) skapas vid första användningen. Demo-backuper kan inte importeras i skarpt läge och vice versa.
+- Offlinecache v27 omfattar alla nya moduler och övningsläget.
+
+**Kvarstående kontroll:** Öppna övningsläget på en fysisk iPhone, testa båda ritningarna i flygplansläge, kontrollera redovisad risk/typ samt exportera och verifiera en säkerhetskopia från Filer. Ingen automatiserad CI-körning kan garantera att Safari kan utföra OCR i verklig miljö. Bekräfta alltid provningar mot originalritning och anläggning.
