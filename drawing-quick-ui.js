@@ -778,7 +778,7 @@
       "auto",
     );
     options(coverSel, [["1", "Sida 1"], ["0", "Inget försättsblad"]], "1");
-    options(typeSel, core.TYPES.map(([t]) => [t, t]), "Rökdetektor");
+    options(typeSel, [["", "Okänd typ – välj manuellt"], ...core.TYPES.map(([t]) => [t, t])], "");
     secInput.placeholder = "Lämna tomt om okänt";
     const scanStatus = el("p");
     scanStatus.setAttribute("role", "status");
@@ -809,6 +809,7 @@
         try {
           const rows = window.drawingOcrData.parseSections(sectionText.value);
           applySections(rows);
+          if(memory.scan)memory.scan.sectionVerified=false;
           sectionMsg.textContent = rows.length + " sektioner används. Adresser som saknas i förteckningen är inte valda.";
         } catch (e) {
           sectionMsg.textContent = e.message;
@@ -860,8 +861,8 @@
           const keep = typeSel.value;
           options(
             typeSel,
-            [...new Set([...cover.legend, ...core.TYPES.map(([t]) => t)])].map((t) => [t, t]),
-            cover.legend.includes(keep) ? keep : cover.legend[0],
+            [["", "Okänd typ – välj manuellt"], ...[...new Set([...cover.legend, ...core.TYPES.map(([t]) => t)])].map((t) => [t, t])],
+            keep || "",
           );
         }
         const defaults = { typ: typeSel.value, sektion: secInput.value.trim() },
@@ -897,7 +898,7 @@
               }),
             snapshot = await db.snapshot(),
             { rows, warnings } = ocrApi.candidates(drawn, sections, register, defaults, det, core);
-          memory.scan = { docId, rows, snapshot, ocr: true, sections };
+          memory.scan = { docId, rows, snapshot, ocr: true, sections, warnings, sectionVerified:false };
           sectionText.value = ocrApi.formatSections(sections);
           scanStatus.textContent =
             `OCR: ${rows.length} adresser på ${drawn.length} sida/sidor, 0 granskade` +
@@ -907,7 +908,7 @@
         } else {
           const snapshot = await db.snapshot(),
             { rows, warnings } = core.candidates(pages, cover, register, f.central, defaults, det);
-          memory.scan = { docId, rows, snapshot };
+          memory.scan = { docId, rows, snapshot, warnings, sectionVerified:false };
           scanStatus.textContent = !textItems
             ? "PDF:en innehåller ingen läsbar text. Välj läsmetod OCR."
             : `${rows.length} adresser hittades på ${pages.length} sida/sidor` +
