@@ -1,5 +1,5 @@
 'use strict';
-const CACHE='sn-offline-shell-v25';
+const CACHE='sn-offline-shell-v26';
 const FILES=['./','./index.html','./workspace.html','./engine.js','./engine.css','./workspace.css','./storage.js','./objects.js','./health-check.js','./orders.js','./detectors.js','./detectors-ui.js','./orders-ui.js','./import-ui.js','./shell.js','./shell.css','./manifest.webmanifest','./icon-192.png','./icon-512.png','./service-core.js','./service-ui.js','./service.css','./pdf-lib.min.js','./field-core.js','./field-ui.js','./ai-config.js','./drawing-ai-core.js','./offline-drawing-scan.js','./drawing-ai-ui.js','./drawing-text-core.js','./drawing-quick-ui.js','./drawing-ocr-core.js','./drawing-ocr.js','./drawing-view.js','./quarter-plan-core.js','./drawing-export.js','./tesseract/tesseract.min.js','./tesseract/worker.min.js','./tesseract/tesseract-core-simd-lstm.wasm.js','./tesseract/tesseract-core-lstm.wasm.js','./tesseract/eng.traineddata','./field.css','./pdf.min.mjs','./pdf.worker.min.mjs'];
 const urls=FILES.map(file=>new URL(file,self.registration.scope).href);
 self.addEventListener('install',event=>event.waitUntil((async()=>{

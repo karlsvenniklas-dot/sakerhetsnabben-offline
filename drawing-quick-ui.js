@@ -1005,6 +1005,13 @@
       bulkSec.placeholder = "Sektion";
       bulkSec.inputMode = "numeric";
       tools.append(
+        // Quick select only for rows confirmed by the section table; the rest stay unticked.
+        button("Markera alla som finns i sektionsförteckningen", () => {
+          s.rows.forEach((r) => {
+            if (r.fromCover && r.sektion && !r.inList && !r.manual) r.approved = true;
+          });
+          renderReview();
+        }),
         button("Avmarkera alla", () => {
           s.rows.forEach((r) => (r.approved = false));
           renderReview();

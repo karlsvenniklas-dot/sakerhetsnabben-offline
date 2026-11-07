@@ -34,5 +34,25 @@ vm.runInNewContext(fs.readFileSync(__dirname+'/service-core.js','utf8'),c);
  state['issues:f']=JSON.stringify([{id:'edited',status:'Åtgärdad',sources:['det:test2'],timeline:[{status:'Öppen'},{status:'Åtgärdad'}]}]);
  await assert.rejects(()=>window.serviceData.undoTest('f','test2'),/stoppades/);
  assert.equal(JSON.parse(state['detectors:f']).events.length,1,'edited issues must block undo');
+ // A repeat fault on an open issue can be undone; only that registration is removed.
+ const repeat={id:'rep',status:'Öppen',group:'det:d:1',sources:['det:a','det:b'],timeline:[{status:'Öppen'},{status:'Öppen',note:'Ny registrering: x',source:'det:b'}]};
+ state['detectors:f']=JSON.stringify({devices:[],events:[{id:'a',kind:'test'},{id:'b',kind:'test'}]});
+ state['issues:f']=JSON.stringify([repeat]);
+ await window.serviceData.undoTest('f','b');
+ assert.deepEqual(JSON.parse(state['issues:f'])[0].sources,['det:a'],'repeat registration retracted');
+ assert.equal(JSON.parse(state['issues:f'])[0].timeline.length,1);
+ assert.equal(JSON.parse(state['detectors:f']).events.length,1);
+ // Older registrations without a source tag are recognised by their note.
+ state['detectors:f']=JSON.stringify({devices:[],events:[{id:'a',kind:'test'},{id:'b',kind:'test'}]});
+ state['issues:f']=JSON.stringify([{...repeat,timeline:[{status:'Öppen'},{status:'Öppen',note:'Ny registrering: x'}]}]);
+ await window.serviceData.undoTest('f','b');
+ assert.deepEqual(JSON.parse(state['issues:f'])[0].sources,['det:a']);
+ // A status change after the repeat, or undoing the first source, is blocked.
+ state['detectors:f']=JSON.stringify({devices:[],events:[{id:'a',kind:'test'},{id:'b',kind:'test'}]});
+ state['issues:f']=JSON.stringify([{...repeat,status:'Åtgärdad',timeline:[...repeat.timeline,{status:'Åtgärdad'}]}]);
+ await assert.rejects(()=>window.serviceData.undoTest('f','b'),/stoppades/);
+ state['issues:f']=JSON.stringify([repeat]);
+ await assert.rejects(()=>window.serviceData.undoTest('f','a'),/stoppades/);
+ assert.equal(JSON.parse(state['detectors:f']).events.length,2);
  console.log('PASS: drawing view export, safety backup allowance, atomic undo and history protection.');
 })().catch(e=>{console.error(e);process.exitCode=1;});

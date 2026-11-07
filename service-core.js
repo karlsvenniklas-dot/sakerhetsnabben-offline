@@ -14,7 +14,7 @@
   return window.localData.updateRecord('issues:'+id,[],items=>{
    for(const s of sources.sort((a,b)=>a.date.localeCompare(b.date))){if(items.some(i=>i.sources?.includes(s.sourceId)))continue;
     const old=items.find(i=>i.group===s.group&&i.status!=='Kontrollerad');
-    if(old){old.sources.push(s.sourceId);old.timeline.push({at:stamp(),status:old.status,note:'Ny registrering: '+s.note,technician:s.technician});}
+    if(old){old.sources.push(s.sourceId);old.timeline.push({at:stamp(),status:old.status,note:'Ny registrering: '+s.note,technician:s.technician,source:s.sourceId});}
     else items.push({id:crypto.randomUUID(),group:s.group,sources:[s.sourceId],title:s.title,note:s.note,photo:s.photo||'',status:'Öppen',createdAt:stamp(),timeline:[{at:stamp(),status:'Öppen',note:s.note,technician:s.technician}]});
    }return items;
   });
@@ -28,13 +28,20 @@
   if(!register||!Array.isArray(register.events)||!register.events.some(e=>e.id===eventId&&e.kind==='test'))throw Error('Provningen saknas eller har redan ångrats.');
   const issues=JSON.parse(snapshot[issueKey]||'[]'),sourceId='det:'+eventId;
   const linked=issues.filter(i=>i.sources?.includes(sourceId));
-  if(linked.some(i=>i.status!=='Öppen'||i.sources?.length!==1||!Array.isArray(i.timeline)||i.timeline.length!==1))
-   throw Error('Felet har ändrats eller fått fler källor. Ångra stoppades för att skydda felhistoriken. Rätta via felregistret.');
+  // An untouched issue created by this test is removed. A repeat registration on an existing
+  // issue is retracted only if it is the latest source and nothing was recorded after it.
+  const fresh=i=>i.status==='Öppen'&&i.sources.length===1&&Array.isArray(i.timeline)&&i.timeline.length===1;
+  const lastRepeat=i=>{const t=Array.isArray(i.timeline)?i.timeline[i.timeline.length-1]:null;
+   return i.sources.length>1&&i.sources[i.sources.length-1]===sourceId&&i.timeline.length>1&&!!t&&t.status===i.status&&
+    (t.source===sourceId||(t.source===undefined&&String(t.note||'').startsWith('Ny registrering')));};
+  if(linked.some(i=>!fresh(i)&&!lastRepeat(i)))
+   throw Error('Felet har ändrats efter provningen. Ångra stoppades för att skydda felhistoriken. Rätta via felregistret.');
   register.events=register.events.filter(e=>e.id!==eventId);
   const writes={[detKey]:JSON.stringify(register)};
-  if(linked.length)writes[issueKey]=JSON.stringify(issues.filter(i=>!linked.some(x=>x.id===i.id)));
+  if(linked.length)writes[issueKey]=JSON.stringify(issues.filter(i=>!(linked.includes(i)&&fresh(i))).map(i=>
+   linked.includes(i)?{...i,sources:i.sources.slice(0,-1),timeline:i.timeline.slice(0,-1)}:i));
   await window.localData.commitRecords(snapshot,writes);
-  return {retractedIssues:linked.length};
+  return {retractedIssues:linked.filter(fresh).length,retractedRepeats:linked.filter(i=>!fresh(i)).length};
  }
  function transition(issue,next,note,technician){
   if(!states.includes(next)||!states.includes(issue.status))throw Error('Ogiltig status.');

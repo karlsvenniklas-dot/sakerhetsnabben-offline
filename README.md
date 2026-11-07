@@ -1,4 +1,4 @@
-# SäkerhetSnabben Offline 2.5.1
+# SäkerhetSnabben Offline 2.5.2
 
 Mobilanpassad app för brandlarm: kundobjekt, arbetsorder, brandlarmsprotokoll (BL401) och detektorregister. Appen körs lokalt i webbläsaren utan konto eller ChatGPT-inloggning.
 
@@ -153,3 +153,9 @@ Inga sparade uppgifter raderas. Redan arkiverade protokoll av de borttagna typer
 - Offlineinstallationen använder cacheversion 25 och rensar bara äldre appcacher när den nya versionen aktiveras. Den ändrar inte lokala kunduppgifter.
 
 Automatiska Node-tester täcker grundlogik och regressionsfall. Innan appen används skarpt ska säkerhetskopiering/återställning och OCR kontrolleras på fysisk enhet i flygplansläge. Tekniker måste verifiera det faktiska regelverket och provningens omfattning på varje objekt.
+
+### Version 2.5.2 – ångra vid upprepat fel och snabbmarkering
+
+- Ångra fungerar även när provningen lade till en ny registrering på ett redan öppet fel. Bara den registreringen tas bort, och resten av felhistoriken lämnas orörd. Har felet fått ny status efter provningen stoppas ångringen som förut.
+- OCR- och PDF-granskningen har knappen "Markera alla som finns i sektionsförteckningen". Den kryssar bara för rader som bekräftas av sektionsförteckningen. Manuellt tillagda adresser och adresser som bara finns i förklaringslistan måste fortfarande väljas en och en.
+- Cacheversion 26.

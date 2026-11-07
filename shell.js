@@ -4,7 +4,7 @@
   const frame=$('workspace');
   let facilities=[],drafts=[],pending=null,engineReady=false,registration,cacheReady=false,toastTimer,refreshTimer;
   const files=['./','./index.html','./workspace.html','./engine.js','./engine.css','./workspace.css','./storage.js','./objects.js','./health-check.js','./orders.js','./detectors.js','./detectors-ui.js','./orders-ui.js','./import-ui.js','./shell.js','./shell.css','./manifest.webmanifest','./icon-192.png','./icon-512.png','./service-core.js','./service-ui.js','./service.css','./pdf-lib.min.js','./field-core.js','./field-ui.js','./ai-config.js','./drawing-ai-core.js','./offline-drawing-scan.js','./drawing-ai-ui.js','./drawing-text-core.js','./drawing-quick-ui.js','./drawing-ocr-core.js','./drawing-ocr.js','./drawing-view.js','./quarter-plan-core.js','./drawing-export.js','./tesseract/tesseract.min.js','./tesseract/worker.min.js','./tesseract/tesseract-core-simd-lstm.wasm.js','./tesseract/tesseract-core-lstm.wasm.js','./tesseract/eng.traineddata','./field.css','./pdf.min.mjs','./pdf.worker.min.mjs'];
-  const cacheName='sn-offline-shell-v25';
+  const cacheName='sn-offline-shell-v26';
   let healthReport=null;
   let offlineError='',installing=false;
   function showOfflineError(message){offlineError=message;$('offline-error').hidden=false;$('offline-error').style.overflowWrap='anywhere';$('offline-error').textContent=`Orsak: ${message}`;}
@@ -62,7 +62,7 @@
     $('connection').textContent=cacheReady?(navigator.onLine?'Offline redo':'Offline · redo'):'Offline ej redo';
     $('offline-state').textContent=cacheReady?'Offline redo':'Inte verifierad';
     $('offline-description').textContent=cacheReady?'Appens filer finns sparade på den här enheten. Prova att stänga och öppna appen i flygplansläge innan första uppdraget.':'Appen behöver öppnas med internet tills alla filer har sparats. Om detta kvarstår kan inloggningen eller webbläsaren hindra offlineinstallationen.';
-    $('offline-progress').textContent=`${count} av ${files.length} filer sparade · Version 2.5.1 · ${navigator.serviceWorker?.controller?'Offlinefunktion aktiv':'Offlinefunktion inte aktiv'}`;
+    $('offline-progress').textContent=`${count} av ${files.length} filer sparade · Version 2.5.2 · ${navigator.serviceWorker?.controller?'Offlinefunktion aktiv':'Offlinefunktion inte aktiv'}`;
     if(cacheReady){offlineError='';$('offline-error').hidden=true;}
   }
   async function initOffline(){
