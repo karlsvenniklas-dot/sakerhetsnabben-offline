@@ -543,11 +543,11 @@
 
     /* ---------- technician memory (this device only) ---------- */
     try {
-      if (!technician.value) technician.value = localStorage.getItem("dq-technician") || "";
+      if (!technician.value) technician.value = localStorage.getItem((new URLSearchParams(location.search).get('demo')==='1'?'demo-':'')+"dq-technician") || "";
     } catch {}
     technician.addEventListener("change", () => {
       try {
-        localStorage.setItem("dq-technician", technician.value.trim());
+        localStorage.setItem((new URLSearchParams(location.search).get('demo')==='1'?'demo-':'')+"dq-technician", technician.value.trim());
       } catch {}
     });
 
@@ -586,6 +586,8 @@
           "muted",
         ),
       );
+      const activeIssues=(ctx.issues||[]).filter(i=>i.group==='det:'+device.id+':'+device.generation&&i.status!=='Kontrollerad');
+      if(activeIssues.length)sheet.append(el("p","Kvarstående felärende: "+activeIssues.map(i=>i.status+(i.note?" – "+i.note:"")).join("; ")+". En OK-provning stänger inte felärendet automatiskt.","dq-left"));
       const ever = qp.lastTested(device, register.events),
         limit = qp.yearBefore(refDate());
       sheet.append(
@@ -778,7 +780,7 @@
       "auto",
     );
     options(coverSel, [["1", "Sida 1"], ["0", "Inget försättsblad"]], "1");
-    options(typeSel, core.TYPES.map(([t]) => [t, t]), "Rökdetektor");
+    options(typeSel, [["", "Okänd typ – välj manuellt"], ...core.TYPES.map(([t]) => [t, t])], "");
     secInput.placeholder = "Lämna tomt om okänt";
     const scanStatus = el("p");
     scanStatus.setAttribute("role", "status");
@@ -809,6 +811,7 @@
         try {
           const rows = window.drawingOcrData.parseSections(sectionText.value);
           applySections(rows);
+          if(memory.scan)memory.scan.sectionVerified=false;
           sectionMsg.textContent = rows.length + " sektioner används. Adresser som saknas i förteckningen är inte valda.";
         } catch (e) {
           sectionMsg.textContent = e.message;
@@ -860,8 +863,8 @@
           const keep = typeSel.value;
           options(
             typeSel,
-            [...new Set([...cover.legend, ...core.TYPES.map(([t]) => t)])].map((t) => [t, t]),
-            cover.legend.includes(keep) ? keep : cover.legend[0],
+            [["", "Okänd typ – välj manuellt"], ...[...new Set([...cover.legend, ...core.TYPES.map(([t]) => t)])].map((t) => [t, t])],
+            keep || "",
           );
         }
         const defaults = { typ: typeSel.value, sektion: secInput.value.trim() },
@@ -897,7 +900,7 @@
               }),
             snapshot = await db.snapshot(),
             { rows, warnings } = ocrApi.candidates(drawn, sections, register, defaults, det, core);
-          memory.scan = { docId, rows, snapshot, ocr: true, sections };
+          memory.scan = { docId, rows, snapshot, ocr: true, sections, warnings, sectionVerified:false };
           sectionText.value = ocrApi.formatSections(sections);
           scanStatus.textContent =
             `OCR: ${rows.length} adresser på ${drawn.length} sida/sidor, 0 granskade` +
@@ -907,7 +910,7 @@
         } else {
           const snapshot = await db.snapshot(),
             { rows, warnings } = core.candidates(pages, cover, register, f.central, defaults, det);
-          memory.scan = { docId, rows, snapshot };
+          memory.scan = { docId, rows, snapshot, warnings, sectionVerified:false };
           scanStatus.textContent = !textItems
             ? "PDF:en innehåller ingen läsbar text. Välj läsmetod OCR."
             : `${rows.length} adresser hittades på ${pages.length} sida/sidor` +
@@ -1000,52 +1003,36 @@
       addBox.append(button("Lägg till – tryck sedan på ritningen", () => startAdd(addInput.value)));
       review.append(addBox);
       const tools = el("div", undefined, "dq-bulk"),
-        bulkSec = el("input"),
-        bulkType = options(el("select"), core.TYPES.map(([t]) => [t, t]), typeSel.value);
-      bulkSec.placeholder = "Sektion";
-      bulkSec.inputMode = "numeric";
+        verified = el("input"), verifiedLabel = el("label");
+      verified.type="checkbox";verified.checked=!!s.sectionVerified;
+      verified.onchange=()=>{s.sectionVerified=verified.checked;renderReview();};
+      verifiedLabel.append(verified,document.createTextNode(" Jag har kontrollerat sektionsförteckningen mot originalritningen."));
+      tools.append(verifiedLabel);
+      const eligible=s.rows.filter(r=>window.drawingReview.canQuickSelect(r,s.rows,s.sectionVerified));
       tools.append(
-        // Quick select only for rows confirmed by the section table; the rest stay unticked.
-        button("Markera alla som finns i sektionsförteckningen", () => {
-          s.rows.forEach((r) => {
-            if (r.fromCover && r.sektion && !r.inList && !r.manual) r.approved = true;
-          });
-          renderReview();
+        button("Markera tydliga och kontrollerade träffar ("+eligible.length+")", () => {
+          if(!s.sectionVerified){scanStatus.textContent="Kontrollera sektionsförteckningen först.";return;}
+          eligible.forEach(r=>r.approved=true);renderReview();
         }),
-        button("Avmarkera alla", () => {
-          s.rows.forEach((r) => (r.approved = false));
-          renderReview();
-        }),
-      );
-      field(tools, "Sektion för valda utan sektion", bulkSec);
-      tools.append(
-        button("Sätt sektion", () => {
-          s.rows.filter((r) => r.approved && !r.existingId && !r.sektion).forEach((r) => (r.sektion = bulkSec.value.trim()));
-          renderReview();
-        }),
-      );
-      field(tools, "Typ för valda nya", bulkType);
-      tools.append(
-        button("Sätt typ", () => {
-          s.rows.filter((r) => r.approved && !r.existingId).forEach((r) => (r.typ = bulkType.value));
-          renderReview();
-        }),
+        button("Avmarkera alla", () => {s.rows.forEach(r=>r.approved=false);renderReview();}),
         button("Avbryt inläsning", () => {
-          memory.scan = null;
-          scanStatus.textContent = "Inläsningen avbröts. Inget sparades.";
-          renderReview();
-        }),
+          memory.scan=null;scanStatus.textContent="Inläsningen avbröts. Inget sparades.";renderReview();
+        })
       );
-      const missing = s.rows.filter((r) => r.approved && !r.existingId && (!r.sektion || !r.typ)).length;
-      review.append(
-        tools,
-        el(
-          "p",
-          `${s.rows.filter((r) => r.approved).length} valda · ${s.rows.filter((r) => r.existingId).length} finns redan i registret` +
-            (missing ? ` · ${missing} saknar sektion eller typ` : ""),
-          missing ? "dq-left" : "",
-        ),
+      const report=window.drawingReview.summary(s.rows);
+      const missing=s.rows.filter(r=>r.approved&&!r.existingId&&(!r.sektion||!r.typ)).length;
+      const overview=el("div",undefined,"dq-sectionbox");
+      overview.append(
+        el("strong",report.total+" adresser hittade · "+report.selected+" valda · "+report.newDevices+" nya detektorer"),
+        el("p",report.conflicts+" träffar med särskilda kontrollpunkter: låg OCR-säkerhet, okänd typ, saknad sektion eller dubbletter. "+report.selectedConflicts+" av dessa är valda.","dq-detail")
       );
+      if(s.warnings?.length){
+        const warn=el("details");
+        warn.append(el("summary",s.warnings.length+" anmärkningar från skanningen"));
+        for(const note of s.warnings.slice(0,40))warn.append(el("p",note,"dq-detail"));
+        overview.append(warn);
+      }
+      review.append(tools,overview,el("p",missing?missing+" valda rader saknar typ eller sektion och kan inte sparas.":"Kontrollera adresserna på ritningen. Importen skapar inte provningshändelser.",missing?"dq-left":"dq-detail"));
       const table = el("table", undefined, "dq-table"),
         headRow = el("tr");
       for (const h of ["", "Sida", "Adress", "Sektion", "Typ", "Placering", ""]) headRow.append(el("th", h));
@@ -1057,10 +1044,7 @@
         check.type = "checkbox";
         check.checked = r.approved;
         check.setAttribute("aria-label", "Ta med " + r.slinga + "." + r.adress);
-        check.onchange = () => {
-          r.approved = check.checked;
-          paintPreview();
-        };
+        check.onchange = () => {r.approved=check.checked;renderReview();};
         const sec = el("input");
         sec.value = r.sektion;
         sec.inputMode = "numeric";
@@ -1080,7 +1064,7 @@
         place.disabled = !!r.existingId;
         place.setAttribute("aria-label", "Placering");
         place.oninput = () => { r.placering = place.value; r.approved = false; check.checked = false; paintPreview(); };
-        const cells = [check, String(r.page), r.slinga + "." + r.adress, sec, typ, place, r.existingId ? "Finns" : r.flag || (r.fromCover ? (r.ocr ? "Förteckning" : "Försättsblad") : "Ny")];
+        const cells = [check, String(r.page), r.slinga + "." + r.adress, sec, typ, place, [r.existingId?"Finns i registret":"Ny i registret",...window.drawingReview.reasons(r,s.rows),r.flag].filter(Boolean).join(" · ")];
         for (const c of cells) {
           const td = el("td");
           if (typeof c === "string") td.textContent = c;
@@ -1114,29 +1098,45 @@
         layer.append(b);
       }
     }
+    /* A second, explicit review gate before any real data is changed. */
     async function commit() {
-      const s = memory.scan;
-      if (!s) return;
-      saveBtn.disabled = true;
-      try {
-        const result = core.writes(s.snapshot, f.id, s.docId, s.rows, f.central, det);
-        ctx.beforeSave();
-        await db.commitRecords(s.snapshot, result.writes);
-        memory.scan = null;
-        ctx.reviewing(false);
-        ctx.saved(
-          `Ritningen är inläst: ${result.created} nya detektorer, ${result.pinned} nya markeringar` +
-            (result.moved ? `, ${result.moved} flyttade` : "") +
-            ". Starta provningsläget och tryck på en detektor.",
-        );
-      } catch (e) {
-        scanStatus.textContent =
-          e.message +
-          (/ändrats/.test(e.message) ? " Skanna PDF:en igen." : "");
-        ctx.afterError();
-      } finally {
-        saveBtn.disabled = false;
+      const proposal=memory.scan;
+      if(!proposal)return;
+      let result,report;
+      try{
+        result=core.writes(proposal.snapshot,f.id,proposal.docId,proposal.rows,f.central,det);
+        report=window.drawingReview.summary(proposal.rows);
+      }catch(e){scanStatus.textContent="Kan inte spara ännu: "+e.message;return;}
+      const wrap=el("div",undefined,"dq-sheet-wrap"),sheet=el("div",undefined,"dq-sheet");
+      sheet.setAttribute("role","dialog");sheet.setAttribute("aria-modal","true");
+      sheet.setAttribute("aria-label","Sista kontroll före ritningsimport");
+      sheet.append(el("h3","Granska före sparning"),
+        el("p",report.selected+" valda markeringar · "+result.created+" nya detektorer · "+report.selectedConflicts+" träffar med extra kontrollbehov."),
+        el("p","Jämför markerad adress, detektortyp och sektion med originalritningen. OCR kan läsa fel även när adressen finns i sektionsförteckningen.","dq-detail"));
+      const listing=el("div",undefined,"dq-table-wrap"),list=el("ul");
+      for(const item of report.items.filter(i=>i.selected).slice(0,120)){
+        const r=proposal.rows.find(row=>row.id===item.id);
+        list.append(el("li",item.address+" · sida "+item.page+" · "+(r?.typ||"OKÄND TYP")+" · sektion "+(r?.sektion||"?")+(item.problems.length?" · KONTROLLERA: "+item.problems.join("; "):"")));
       }
+      if(report.selected>120)list.append(el("li","Ytterligare "+(report.selected-120)+" adresser finns i granskningslistan bakom denna vy."));
+      listing.append(list);sheet.append(listing);
+      const label=el("label"),confirmed=el("input");confirmed.type="checkbox";
+      label.append(confirmed,document.createTextNode(" Jag har jämfört de valda detektorerna med ritningen."));
+      const approve=button("Bekräfta och spara",async()=>{
+        if(memory.scan!==proposal){wrap.remove();scanStatus.textContent="Granskningen ändrades. Börja om.";return;}
+        approve.disabled=true;saveBtn.disabled=true;
+        try{
+          ctx.beforeSave();
+          await db.commitRecords(proposal.snapshot,result.writes);
+          memory.scan=null;wrap.remove();ctx.reviewing(false);
+          ctx.saved("Ritningen är inläst: "+result.created+" nya detektorer, "+result.pinned+" markeringar. Ingen provning har registrerats.");
+        }catch(e){
+          scanStatus.textContent="Kunde inte spara: "+e.message;ctx.afterError();approve.disabled=false;
+        }finally{saveBtn.disabled=false;}
+      },"primary");
+      approve.disabled=true;confirmed.onchange=()=>approve.disabled=!confirmed.checked;
+      sheet.append(label,approve,button("Tillbaka till granskningslistan",()=>wrap.remove()));
+      wrap.append(sheet);document.body.append(wrap);
     }
 
     paintQuick();

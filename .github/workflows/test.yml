@@ -1,7 +1,7 @@
 name: Test local app logic
 on:
   push:
-    branches: [main, fix-integrity-v2-5-1]
+    branches: [main, fix-integrity-v2-5-1, quality-v2-6]
   pull_request:
   workflow_dispatch:
 permissions:

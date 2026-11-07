@@ -1,7 +1,8 @@
 /* Device-local storage only. No records or uploaded documents leave this origin. */
 (() => {
   'use strict';
-  const DB_NAME = 'sakerhetsnabben-offline-v1';
+  const DEMO = new URLSearchParams(location.search).get('demo')==='1';
+  const DB_NAME = DEMO ? 'sakerhetsnabben-demo-v1' : 'sakerhetsnabben-offline-v1';
   let db;
   const channel = typeof BroadcastChannel === 'function' ? new BroadcastChannel(DB_NAME) : null;
   function signal(detail) {
@@ -109,9 +110,11 @@
     },
     async exportBackup() {
       const data = await this.snapshot();delete data['last-object-import'];
-      return {app:'SäkerhetSnabben',version:4,edition:'offline',exportedAt:new Date().toISOString(),data};
+      return {app:'SäkerhetSnabben',version:4,edition:DEMO?'offline-demo':'offline',exportedAt:new Date().toISOString(),data};
     },
     async restore(backup) {
+      if(DEMO && backup?.edition!=='offline-demo')throw Error('I övningsläge får bara säkerhetskopior från övningsläget importeras.');
+      if(!DEMO && backup?.edition==='offline-demo')throw Error('En övningskopia får inte importeras till riktiga kundobjekt.');
       if (!backup || backup.app !== 'SäkerhetSnabben' || !backup.data || typeof backup.data !== 'object' || Array.isArray(backup.data)) throw new Error('Det här är inte en säkerhetskopia från SäkerhetSnabben.');
       const entries=Object.entries(backup.data);
       const allowed=/^(facilities|workorders|history-index|seed-v\d+|test-mode|facility-overrides|field-preferences|fieldwork:.+|draft:.+|docs:.+|docfile:.+|materiel:.+|report:.+|detectors:.+|issues:.+|service-reports:.+|drawing-view:.+)$/;
