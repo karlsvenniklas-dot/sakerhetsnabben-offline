@@ -1,4 +1,4 @@
-# SäkerhetSnabben Offline 2.7.0
+# SäkerhetSnabben Offline 2.7.1
 
 Mobilanpassad app för brandlarm: kundobjekt, arbetsorder, brandlarmsprotokoll (BL401) och detektorregister. Appen körs lokalt i webbläsaren utan konto eller ChatGPT-inloggning.
 
@@ -184,3 +184,11 @@ Automatiska Node-tester täcker grundlogik och regressionsfall. Innan appen anv�
 - Offline-cache v28 inkluderar de nya modulerna och deras data valideras innan sparande/import.
 
 **Fälttest återstår:** Kontrollera ritningsmarkeringarnas lägen på roterade PDF:er på iPhone/iPad, offlineexport till Filer och uppföljning i övningsläget innan användning som skarp dokumentation.
+
+### Version 2.7.1 – rättningar efter granskning
+
+- Objektkortet går att öppna i övningsläget igen. Felregistret och BL401-protokollet tål nu provningar som saknar sparad detektorkopia, till exempel äldre eller importerade data. Detektorn hämtas då från registret.
+- Säkerhetskopian skapas även om appen redan saknar en dokumentfil eller ett protokoll. Det som saknas visas som varning i stället för att stoppa hela exporten, eftersom det är just då en kopia behövs mest. En skadad fil (trasig JSON eller fel kontrollsumma) stoppas som förut. Utan https sparas kopian utan kontrollsumma.
+- Import av en ofullständig kopia visar vad som saknas i bekräftelsen, och resten kan importeras.
+- I ritningsgranskningen kan typ och sektion sättas på flera rader samtidigt. Bara tomma fält fylls, och raderna kryssas inte i automatiskt.
+- Cacheversion 29.

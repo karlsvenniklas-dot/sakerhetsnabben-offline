@@ -64,8 +64,9 @@
         {id:'demo-d3',central:'',slinga:'01',adress:'003',sektion:'2',typ:'Rökdetektor',placering:'Fiktiv korridor',lokalId:'',generation:1}
       ],
       events=[
-        {id:'demo-test-ok',kind:'test',deviceId:'demo-d1',generation:1,date,recordedAt:new Date().toISOString(),status:'Provad – OK',technician:'Övning',note:'',orderId:'demo-order'},
-        {id:'demo-test-fel',kind:'test',deviceId:'demo-d2',generation:1,date,recordedAt:new Date().toISOString(),status:'Provad – anmärkning',technician:'Övning',note:'Övningsfel (fiktivt)',orderId:'demo-order'},
+        // Same shape as detectorData.event(): a copy of the device travels with the test.
+        {id:'demo-test-ok',kind:'test',deviceId:'demo-d1',generation:1,device:{...devices[0]},date,recordedAt:new Date().toISOString(),status:'Provad – OK',technician:'Övning',note:'',orderId:'demo-order'},
+        {id:'demo-test-fel',kind:'test',deviceId:'demo-d2',generation:1,device:{...devices[1]},date,recordedAt:new Date().toISOString(),status:'Provad – anmärkning',technician:'Övning',note:'Övningsfel (fiktivt)',orderId:'demo-order'},
       ],
       issue={id:'demo-issue',group:'det:demo-d2:1',sources:['det:demo-test-fel'],title:'DEMO 01.002',note:'Övningsfel (fiktivt)',status:'Öppen',createdAt:new Date().toISOString(),timeline:[{at:new Date().toISOString(),status:'Öppen',note:'Fiktiv anmärkning',technician:'Övning'}]};
     const write={

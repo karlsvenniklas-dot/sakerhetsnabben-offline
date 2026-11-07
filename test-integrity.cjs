@@ -54,5 +54,11 @@ vm.runInNewContext(fs.readFileSync(__dirname+'/service-core.js','utf8'),c);
  state['issues:f']=JSON.stringify([repeat]);
  await assert.rejects(()=>window.serviceData.undoTest('f','a'),/stoppades/);
  assert.equal(JSON.parse(state['detectors:f']).events.length,2);
+ // A fault test without a device copy (older/demo data) must not crash the fault register.
+ window.detectorData.label=d=>d.slinga+'.'+d.adress;
+ window.localData.updateRecord=async(k,def,fn)=>{const v=fn(JSON.parse(state[k]||JSON.stringify(def)));state[k]=JSON.stringify(v);return v;};
+ state['detectors:g']=JSON.stringify({devices:[{id:'x',slinga:'01',adress:'002',generation:1}],events:[{id:'n',kind:'test',deviceId:'x',generation:1,status:'Provad – anmärkning',note:'Fel',date:'2026-11-07'}]});
+ const synced=await window.serviceData.syncIssues('g');
+ assert.equal(synced[0].title,'01.002');
  console.log('PASS: drawing view export, safety backup allowance, atomic undo and history protection.');
 })().catch(e=>{console.error(e);process.exitCode=1;});

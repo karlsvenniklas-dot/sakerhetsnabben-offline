@@ -20,6 +20,13 @@ const data={
  assert.equal((await backup.verify(JSON.parse(JSON.stringify(payload)))).ok,true);
  assert.equal((await backup.verify({...payload,data:{...data,facilities:JSON.stringify([{id:'different'}])}})).ok,false);
  assert.equal(backup.inspect({...payload,data:{...data,'docfile:doc':undefined}}).ok,false);
+ // Incomplete data is still backed up (with warnings); only damaged files fail.
+ const gap={...data,'history-index':JSON.stringify([{id:'r1',proto:'BL401'}]),'docs:f':JSON.stringify([{id:'doc'},{id:'lost',namn:'Plan 2'}])};
+ const partial=await backup.seal({app:'SäkerhetSnabben',version:4,edition:'offline',data:gap});
+ assert.equal(partial.integrity.warnings.length,2);
+ const partialCheck=await backup.verify(JSON.parse(JSON.stringify(partial)));
+ assert.equal(partialCheck.ok,true);assert.match(partialCheck.warnings.join(),/Plan 2/);assert.match(partialCheck.warnings.join(),/BL401/);
+ await assert.rejects(()=>backup.seal({app:'SäkerhetSnabben',data:{...data,facilities:'{trasig'}}),/kunde inte läsas/);
  const legacy=await backup.verify({app:'SäkerhetSnabben',data});
  assert.equal(legacy.ok,true);assert.equal(legacy.hasChecksum,false);
  console.log('PASS: review risks, safe bulk selection and backup integrity / missing documents.');

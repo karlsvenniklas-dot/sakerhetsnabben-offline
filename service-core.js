@@ -4,10 +4,15 @@
  const states=['Öppen','Åtgärdad','Kontrollerad'];
  const stamp=()=>new Date().toISOString();
  const missing=f=>[['anlNr','Objektnummer'],['adress','Adress'],['central','Centralapparat'],['larmsandare','Larmsändare'],['kontakt','Kontaktperson'],['tele','Kontakttelefon'],['skotare1','Anläggningsskötare 1'],['skotare2','Anläggningsskötare 2']].filter(([k])=>!String(f[k]||'').trim()).map(([,label])=>label);
+ /* Older or imported tests may lack the device copy; fall back to the register, then the ID. */
+ function detectorTitle(e,register){
+  const device=e.device||(register.devices||[]).find(d=>d.id===e.deviceId&&d.generation===e.generation)||(register.devices||[]).find(d=>d.id===e.deviceId);
+  return device?window.detectorData.label(device,''):'Detektor '+(e.deviceId||'okänd');
+ }
  async function syncIssues(id){
   const data=await window.localData.snapshot(),sources=[];
   const register=JSON.parse(data['detectors:'+id]||'{"events":[]}');
-  for(const e of register.events||[])if(e.kind==='test'&&e.status==='Provad – anmärkning')sources.push({sourceId:'det:'+e.id,group:'det:'+e.deviceId+':'+e.generation,title:e.label||window.detectorData.label(e.device,''),note:e.note||'',photo:e.photo||'',date:e.date,technician:e.technician||''});
+  for(const e of register.events||[])if(e.kind==='test'&&e.status==='Provad – anmärkning')sources.push({sourceId:'det:'+e.id,group:'det:'+e.deviceId+':'+e.generation,title:e.label||detectorTitle(e,register),note:e.note||'',photo:e.photo||'',date:e.date,technician:e.technician||''});
   for(const meta of JSON.parse(data['history-index']||'[]').filter(r=>r.facilityId===id))for(const [index,a]of (meta.anms||[]).entries())sources.push({sourceId:'report:'+meta.id+':'+index,group:'report:'+meta.id+':'+index,title:meta.proto+' · '+(a.pos||'Anmärkning'),note:a.text||a.anm||'',date:meta.datum||'',technician:meta.technician||''});
   const existing=JSON.parse(data['issues:'+id]||'[]');
   if(!sources.some(s=>!existing.some(i=>i.sources?.includes(s.sourceId))))return existing;

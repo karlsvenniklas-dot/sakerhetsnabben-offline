@@ -1015,6 +1015,32 @@
           eligible.forEach(r=>r.approved=true);renderReview();
         }),
         button("Avmarkera alla", () => {s.rows.forEach(r=>r.approved=false);renderReview();}),
+      );
+      // Fill in a missing type or section on many rows at once. Only empty fields on new rows
+      // are filled, and the rows stay unticked so each one is still reviewed before saving.
+      const untyped=s.rows.filter(r=>!r.existingId&&!r.typ),unsectioned=s.rows.filter(r=>!r.existingId&&!r.sektion);
+      let fill=null;
+      if(untyped.length||unsectioned.length){
+        fill=el("div",undefined,"dq-bulk");
+        if(untyped.length){
+          const bulkType=options(el("select"),[["","Välj typ"],...core.TYPES.map(([t])=>[t,t])],"");
+          field(fill,"Typ för "+untyped.length+" rader utan typ",bulkType);
+          fill.append(button("Sätt typ",()=>{
+            if(!bulkType.value){scanStatus.textContent="Välj en typ först.";return;}
+            untyped.forEach(r=>{r.typ=bulkType.value;r.approved=false;});renderReview();
+          }));
+        }
+        if(unsectioned.length){
+          const bulkSec=el("input");bulkSec.inputMode="numeric";bulkSec.placeholder="Sektion";
+          field(fill,"Sektion för "+unsectioned.length+" rader utan sektion",bulkSec);
+          fill.append(button("Sätt sektion",()=>{
+            const v=bulkSec.value.trim();if(!v){scanStatus.textContent="Skriv en sektion först.";return;}
+            unsectioned.forEach(r=>{r.sektion=v;r.approved=false;});renderReview();
+          }));
+        }
+        fill.append(el("p","Fyller bara tomma fält. Raderna kryssas inte i automatiskt – granska dem innan du sparar.","dq-detail"));
+      }
+      tools.append(
         button("Avbryt inläsning", () => {
           memory.scan=null;scanStatus.textContent="Inläsningen avbröts. Inget sparades.";renderReview();
         })
@@ -1032,7 +1058,7 @@
         for(const note of s.warnings.slice(0,40))warn.append(el("p",note,"dq-detail"));
         overview.append(warn);
       }
-      review.append(tools,overview,el("p",missing?missing+" valda rader saknar typ eller sektion och kan inte sparas.":"Kontrollera adresserna på ritningen. Importen skapar inte provningshändelser.",missing?"dq-left":"dq-detail"));
+      review.append(tools,...(fill?[fill]:[]),overview,el("p",missing?missing+" valda rader saknar typ eller sektion och kan inte sparas.":"Kontrollera adresserna på ritningen. Importen skapar inte provningshändelser.",missing?"dq-left":"dq-detail"));
       const table = el("table", undefined, "dq-table"),
         headRow = el("tr");
       for (const h of ["", "Sida", "Adress", "Sektion", "Typ", "Placering", ""]) headRow.append(el("th", h));
