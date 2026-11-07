@@ -1001,52 +1001,36 @@
       addBox.append(button("Lägg till – tryck sedan på ritningen", () => startAdd(addInput.value)));
       review.append(addBox);
       const tools = el("div", undefined, "dq-bulk"),
-        bulkSec = el("input"),
-        bulkType = options(el("select"), core.TYPES.map(([t]) => [t, t]), typeSel.value);
-      bulkSec.placeholder = "Sektion";
-      bulkSec.inputMode = "numeric";
+        verified = el("input"), verifiedLabel = el("label");
+      verified.type="checkbox";verified.checked=!!s.sectionVerified;
+      verified.onchange=()=>{s.sectionVerified=verified.checked;renderReview();};
+      verifiedLabel.append(verified,document.createTextNode(" Jag har kontrollerat sektionsförteckningen mot originalritningen."));
+      tools.append(verifiedLabel);
+      const eligible=s.rows.filter(r=>window.drawingReview.canQuickSelect(r,s.rows,s.sectionVerified));
       tools.append(
-        // Quick select only for rows confirmed by the section table; the rest stay unticked.
-        button("Markera alla som finns i sektionsförteckningen", () => {
-          s.rows.forEach((r) => {
-            if (r.fromCover && r.sektion && !r.inList && !r.manual) r.approved = true;
-          });
-          renderReview();
+        button("Markera tydliga och kontrollerade träffar ("+eligible.length+")", () => {
+          if(!s.sectionVerified){scanStatus.textContent="Kontrollera sektionsförteckningen först.";return;}
+          eligible.forEach(r=>r.approved=true);renderReview();
         }),
-        button("Avmarkera alla", () => {
-          s.rows.forEach((r) => (r.approved = false));
-          renderReview();
-        }),
-      );
-      field(tools, "Sektion för valda utan sektion", bulkSec);
-      tools.append(
-        button("Sätt sektion", () => {
-          s.rows.filter((r) => r.approved && !r.existingId && !r.sektion).forEach((r) => (r.sektion = bulkSec.value.trim()));
-          renderReview();
-        }),
-      );
-      field(tools, "Typ för valda nya", bulkType);
-      tools.append(
-        button("Sätt typ", () => {
-          s.rows.filter((r) => r.approved && !r.existingId).forEach((r) => (r.typ = bulkType.value));
-          renderReview();
-        }),
+        button("Avmarkera alla", () => {s.rows.forEach(r=>r.approved=false);renderReview();}),
         button("Avbryt inläsning", () => {
-          memory.scan = null;
-          scanStatus.textContent = "Inläsningen avbröts. Inget sparades.";
-          renderReview();
-        }),
+          memory.scan=null;scanStatus.textContent="Inläsningen avbröts. Inget sparades.";renderReview();
+        })
       );
-      const missing = s.rows.filter((r) => r.approved && !r.existingId && (!r.sektion || !r.typ)).length;
-      review.append(
-        tools,
-        el(
-          "p",
-          `${s.rows.filter((r) => r.approved).length} valda · ${s.rows.filter((r) => r.existingId).length} finns redan i registret` +
-            (missing ? ` · ${missing} saknar sektion eller typ` : ""),
-          missing ? "dq-left" : "",
-        ),
+      const report=window.drawingReview.summary(s.rows);
+      const missing=s.rows.filter(r=>r.approved&&!r.existingId&&(!r.sektion||!r.typ)).length;
+      const overview=el("div",undefined,"dq-sectionbox");
+      overview.append(
+        el("strong",report.total+" adresser hittade · "+report.selected+" valda · "+report.newDevices+" nya detektorer"),
+        el("p",report.conflicts+" träffar med särskilda kontrollpunkter: låg OCR-säkerhet, okänd typ, saknad sektion eller dubbletter. "+report.selectedConflicts+" av dessa är valda.","dq-detail")
       );
+      if(s.warnings?.length){
+        const warn=el("details");
+        warn.append(el("summary",s.warnings.length+" anmärkningar från skanningen"));
+        for(const note of s.warnings.slice(0,40))warn.append(el("p",note,"dq-detail"));
+        overview.append(warn);
+      }
+      review.append(tools,overview,el("p",missing?missing+" valda rader saknar typ eller sektion och kan inte sparas.":"Kontrollera adresserna på ritningen. Importen skapar inte provningshändelser.",missing?"dq-left":"dq-detail"));
       const table = el("table", undefined, "dq-table"),
         headRow = el("tr");
       for (const h of ["", "Sida", "Adress", "Sektion", "Typ", "Placering", ""]) headRow.append(el("th", h));
@@ -1058,10 +1042,7 @@
         check.type = "checkbox";
         check.checked = r.approved;
         check.setAttribute("aria-label", "Ta med " + r.slinga + "." + r.adress);
-        check.onchange = () => {
-          r.approved = check.checked;
-          paintPreview();
-        };
+        check.onchange = () => {r.approved=check.checked;renderReview();};
         const sec = el("input");
         sec.value = r.sektion;
         sec.inputMode = "numeric";
@@ -1081,7 +1062,7 @@
         place.disabled = !!r.existingId;
         place.setAttribute("aria-label", "Placering");
         place.oninput = () => { r.placering = place.value; r.approved = false; check.checked = false; paintPreview(); };
-        const cells = [check, String(r.page), r.slinga + "." + r.adress, sec, typ, place, r.existingId ? "Finns" : r.flag || (r.fromCover ? (r.ocr ? "Förteckning" : "Försättsblad") : "Ny")];
+        const cells = [check, String(r.page), r.slinga + "." + r.adress, sec, typ, place, [r.existingId?"Finns i registret":"Ny i registret",...window.drawingReview.reasons(r,s.rows),r.flag].filter(Boolean).join(" · ")];
         for (const c of cells) {
           const td = el("td");
           if (typeof c === "string") td.textContent = c;
