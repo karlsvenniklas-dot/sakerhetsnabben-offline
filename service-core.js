@@ -19,6 +19,23 @@
    }return items;
   });
  }
+
+ /* Atomic undo: retracts only untouched auto-created issues, never edited fault history. */
+ async function undoTest(facilityId,eventId){
+  const snapshot=await window.localData.snapshot();
+  const detKey='detectors:'+facilityId,issueKey='issues:'+facilityId;
+  const register=JSON.parse(snapshot[detKey]||'null');
+  if(!register||!Array.isArray(register.events)||!register.events.some(e=>e.id===eventId&&e.kind==='test'))throw Error('Provningen saknas eller har redan ångrats.');
+  const issues=JSON.parse(snapshot[issueKey]||'[]'),sourceId='det:'+eventId;
+  const linked=issues.filter(i=>i.sources?.includes(sourceId));
+  if(linked.some(i=>i.status!=='Öppen'||i.sources?.length!==1||!Array.isArray(i.timeline)||i.timeline.length!==1))
+   throw Error('Felet har ändrats eller fått fler källor. Ångra stoppades för att skydda felhistoriken. Rätta via felregistret.');
+  register.events=register.events.filter(e=>e.id!==eventId);
+  const writes={[detKey]:JSON.stringify(register)};
+  if(linked.length)writes[issueKey]=JSON.stringify(issues.filter(i=>!linked.some(x=>x.id===i.id)));
+  await window.localData.commitRecords(snapshot,writes);
+  return {retractedIssues:linked.length};
+ }
  function transition(issue,next,note,technician){
   if(!states.includes(next)||!states.includes(issue.status))throw Error('Ogiltig status.');
   if(next===issue.status)throw Error('Välj en annan status.');
@@ -46,5 +63,5 @@
   y-=10;line('Rapporten sammanställer registrerat arbete. Separata kontrollprotokoll och bifogade ritningar ingår inte som fullständiga dokument.');
   const pages=doc.getPages();pages.forEach((p,i)=>p.drawText(`${i+1} / ${pages.length}`,{x:500,y:25,size:9,font}));return new Blob([await doc.save()],{type:'application/pdf'});
  }
- window.serviceData={states,missing,syncIssues,transition,duplicates,pdf};
+ window.serviceData={states,missing,syncIssues,undoTest,transition,duplicates,pdf};
 })();

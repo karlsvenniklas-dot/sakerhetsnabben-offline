@@ -114,10 +114,11 @@
     async restore(backup) {
       if (!backup || backup.app !== 'SäkerhetSnabben' || !backup.data || typeof backup.data !== 'object' || Array.isArray(backup.data)) throw new Error('Det här är inte en säkerhetskopia från SäkerhetSnabben.');
       const entries=Object.entries(backup.data);
-      const allowed=/^(facilities|workorders|history-index|seed-v\d+|test-mode|facility-overrides|field-preferences|fieldwork:.+|draft:.+|docs:.+|docfile:.+|materiel:.+|report:.+|detectors:.+|issues:.+|service-reports:.+)$/;
+      const allowed=/^(facilities|workorders|history-index|seed-v\d+|test-mode|facility-overrides|field-preferences|fieldwork:.+|draft:.+|docs:.+|docfile:.+|materiel:.+|report:.+|detectors:.+|issues:.+|service-reports:.+|drawing-view:.+)$/;
       for(const [key,value] of entries) {
         if(!allowed.test(key)||typeof value!=='string') throw new Error('Säkerhetskopian innehåller en okänd post.');
         const parsed=JSON.parse(value);
+        if(key.startsWith('drawing-view:') && (!parsed || typeof parsed!=='object' || Array.isArray(parsed) || !parsed.pages || typeof parsed.pages!=='object' || Array.isArray(parsed.pages) || Object.values(parsed.pages).some(p=>!p || ![0,90,180,270].includes(p.rotation))))throw Error('Ritningens visningsinställningar är ogiltiga.');
         if(key.startsWith('fieldwork:')){if(window.fieldData)window.fieldData.validateField(parsed);else if(!parsed||!['visits','materials','plans','pins'].every(k=>Array.isArray(parsed[k])))throw Error('Fältregistret är ogiltigt.');}
         if(key==='field-preferences'&&(!parsed||!Array.isArray(parsed.phrases)||parsed.phrases.some(p=>typeof p!=='string')||!['SK','KV','SB'].every(k=>Array.isArray(parsed.templates?.[k])&&parsed.templates[k].every(i=>typeof i?.text==='string'&&['Förberedelser','Provning','Återställning','Dokumentation'].includes(i.phase)))))throw Error('Egna mallar eller snabbtexter är ogiltiga.');
         if((key.startsWith('issues:')||key.startsWith('service-reports:'))&&(!Array.isArray(parsed)||parsed.some(v=>!v||typeof v.id!=='string')))throw Error('Ett service- eller felregister är ogiltigt.');
