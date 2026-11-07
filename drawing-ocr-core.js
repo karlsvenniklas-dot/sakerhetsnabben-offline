@@ -161,7 +161,7 @@
     const words = info.split(/\s+/).filter(Boolean),
       // OCR may put a stray symbol before the abbreviation ("X VD ...")
       at = words.slice(0, 3).findIndex((w) => textApi.shortType(w)),
-      typ = at >= 0 ? textApi.shortType(words[at]) : textApi.typeOf(info) || "In-/utgångsenhet",
+      typ = at >= 0 ? textApi.shortType(words[at]) : textApi.typeOf(info) || "",
       rest = (at >= 0 ? words.slice(at + 1) : words).join(" ").replace(/[^A-Za-zÅÄÖåäö0-9)]+$/, "").trim(),
       placering = rest.toLowerCase().replace(/^./, (c) => c.toUpperCase());
     return { typ, placering: placering.slice(0, 120) };
