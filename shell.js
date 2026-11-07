@@ -2,6 +2,10 @@
   'use strict';
   const $=id=>document.getElementById(id);
   const frame=$('workspace');
+  const demo=new URLSearchParams(location.search).get('demo')==='1';
+  const workspaceUrl='./workspace.html'+(demo?'?demo=1':'');
+  frame.src=workspaceUrl;
+  if(demo){document.body.dataset.demo='yes';$('demo-banner').hidden=false;}
   let facilities=[],drafts=[],pending=null,engineReady=false,registration,cacheReady=false,toastTimer,refreshTimer;
   const files=['./','./index.html','./workspace.html','./engine.js','./engine.css','./workspace.css','./storage.js','./objects.js','./health-check.js','./orders.js','./detectors.js','./detectors-ui.js','./orders-ui.js','./import-ui.js','./shell.js','./shell.css','./manifest.webmanifest','./icon-192.png','./icon-512.png','./service-core.js','./service-ui.js','./service.css','./pdf-lib.min.js','./field-core.js','./field-ui.js','./ai-config.js','./drawing-ai-core.js','./offline-drawing-scan.js','./drawing-ai-ui.js','./drawing-text-core.js','./drawing-quick-ui.js','./drawing-ocr-core.js','./drawing-ocr.js','./drawing-view.js','./quarter-plan-core.js','./drawing-export.js','./tesseract/tesseract.min.js','./tesseract/worker.min.js','./tesseract/tesseract-core-simd-lstm.wasm.js','./tesseract/tesseract-core-lstm.wasm.js','./tesseract/eng.traineddata','./field.css','./pdf.min.mjs','./pdf.worker.min.mjs'];
   const cacheName='sn-offline-shell-v26';
@@ -107,7 +111,10 @@
   navigator.serviceWorker?.addEventListener('controllerchange',verifyCache);
   navigator.serviceWorker?.addEventListener('message',event=>{if(event.data?.type==='OFFLINE_INSTALL_ERROR'){showOfflineError(event.data.message);verifyCache();}});
   document.querySelectorAll('[data-nav]').forEach(b=>b.onclick=()=>{const target=b.dataset.nav;if(target==='objects')openWork('OBJEKT');else if(target==='protocols')openWork('SNABB');else navigate(target);});
-  $('connection').onclick=()=>navigate('settings');$('choose-object').onclick=()=>openWork('OBJEKT');$('manage-objects').onclick=()=>openWork('OBJEKT');$('quick-protocol').onclick=()=>openWork('SNABB');$('back-home').onclick=()=>navigate('home');document.querySelector('.brand').onclick=event=>{event.preventDefault();navigate('home');};$('search').oninput=renderObjects;$('object-sort').onchange=renderObjects;window.addEventListener('objects-imported',()=>{engineReady=false;frame.src='./workspace.html';refresh();});
+  $('connection').onclick=()=>navigate('settings');$('choose-object').onclick=()=>openWork('OBJEKT');$('manage-objects').onclick=()=>openWork('OBJEKT');$('quick-protocol').onclick=()=>openWork('SNABB');$('back-home').onclick=()=>navigate('home');document.querySelector('.brand').onclick=event=>{event.preventDefault();navigate('home');};$('search').oninput=renderObjects;$('object-sort').onchange=renderObjects;window.addEventListener('objects-imported',()=>{engineReady=false;frame.src=workspaceUrl;refresh();});
+  $('start-demo').onclick=()=>{location.href='./?demo=1';};
+  $('exit-demo').onclick=()=>{location.href='./';};
+  if(demo){$('start-demo').disabled=true;$('start-demo').textContent='Övningsläget är öppet';}
   $('home-backup').onclick=backup;$('export-backup').onclick=backup;$('import-backup').onclick=()=>$('backup-file').click();
   $('verify-backup').onclick=()=>$('verify-backup-file').click();
   $('verify-backup-file').onchange=async event=>{
@@ -122,7 +129,7 @@
     }catch(e){$('backup-check-result').textContent='Kontroll misslyckades: '+e.message;toast('Säkerhetskopian kunde inte verifieras.');}
     finally{event.target.value='';}
   };
-  $('backup-file').onchange=async event=>{const file=event.target.files[0];if(!file)return;try{if(file.size>150*1048576)throw new Error('Filen är för stor för säker import på telefonen.');const data=JSON.parse(await file.text());const check=await window.backupAudit.verify(data);if(!check.ok)throw Error('Säkerhetskopian är skadad: '+check.errors.slice(0,2).join('; '));if(!confirm('Importera säkerhetskopian? Poster med samma ID ersätts. Spara först en säkerhetskopia av nuvarande data.'))return;const count=await window.localData.restore(data);engineReady=false;frame.src='./workspace.html';await refresh();window.dispatchEvent(new Event('objects-imported'));toast(`${count} poster importerade.`);}catch(error){toast(error.message||'Importen misslyckades.');}finally{event.target.value='';}};
+  $('backup-file').onchange=async event=>{const file=event.target.files[0];if(!file)return;try{if(file.size>150*1048576)throw new Error('Filen är för stor för säker import på telefonen.');const data=JSON.parse(await file.text());const check=await window.backupAudit.verify(data);if(!check.ok)throw Error('Säkerhetskopian är skadad: '+check.errors.slice(0,2).join('; '));if(!confirm('Importera säkerhetskopian? Poster med samma ID ersätts. Spara först en säkerhetskopia av nuvarande data.'))return;const count=await window.localData.restore(data);engineReady=false;frame.src=workspaceUrl;await refresh();window.dispatchEvent(new Event('objects-imported'));toast(`${count} poster importerade.`);}catch(error){toast(error.message||'Importen misslyckades.');}finally{event.target.value='';}};
   async function runDataCheck(){
     const button=$('run-data-check');button.disabled=true;
     $('data-check-summary').textContent='Läser lokala register…';
@@ -159,7 +166,9 @@
   $('apply-update').onclick=()=>{if(!confirm('Aktivera uppdateringen och ladda om appen? Kontrollera att protokollet visar Sparat på telefonen.'))return;const worker=registration?.waiting;if(worker){navigator.serviceWorker.addEventListener('controllerchange',()=>location.reload(),{once:true});worker.postMessage({type:'ACTIVATE'});}};
   window.addEventListener('online',verifyCache);window.addEventListener('offline',verifyCache);
   $('today').textContent=new Date().toLocaleDateString('sv-SE',{weekday:'long',day:'numeric',month:'long'}).toLocaleUpperCase('sv');
-  updateBackupDate();window.localReady.then(refresh).catch(()=>{});initOffline();
+  updateBackupDate();
+  window.localReady.then(async()=>{if(demo)await window.demoFixture.seed();await refresh();}).catch(error=>{$('save-error').hidden=false;$('save-error').textContent='Kunde inte initiera övningsläget: '+error.message;});
+  initOffline();
   window.addEventListener('open-order',event=>openWork('ORDER',event.detail));window.addEventListener('open-customer',event=>openWork('OBJECT',event.detail));window.addEventListener('open-report',event=>openWork('REPORT',event.detail));
   const tools=document.modelContext;
   if(tools?.registerTool){const abort=new AbortController();window.addEventListener('pagehide',()=>abort.abort(),{once:true});try{Promise.resolve(tools.registerTool({name:'read_local_work_summary',title:'Läs lokal arbetsöversikt',description:'Läser antal lokala objekt, utkast och protokoll utan att ändra uppgifter.',inputSchema:{type:'object',properties:{},additionalProperties:false},annotations:{readOnlyHint:true},async execute(input){if(!input||typeof input!=='object'||Object.keys(input).length)throw new Error('Inga argument tillåtna');const data=await window.localData.snapshot();return{objects:JSON.parse(data.facilities||'[]').length,drafts:Object.keys(data).filter(k=>k.startsWith('draft:')).length,reports:JSON.parse(data['history-index']||'[]').length};}},{signal:abort.signal})).catch(()=>{});}catch{}}
