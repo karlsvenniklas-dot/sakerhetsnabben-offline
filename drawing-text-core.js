@@ -394,8 +394,9 @@
       label: "SBF 110:8 – med larmadresser",
       ref: "SBF 110:8 avsnitt 11.5.3 b",
       quarter: { basis: "devices", percent: 2 },
-      year: [{ basis: "devices", percent: 8 }],
-      note: "Minst 2 % av detektorerna per kvartal och minst 8 % under året (SBF 110:8 11.5.3 b). Kontrollera övriga krav separat.",
+      // 11.5.3 b has no yearly percentage, only that testing is spread so different detectors are tested.
+      year: [],
+      note: "Minst 2 % av detektorerna per kvartal. Provningen ska spridas över anläggningen och året så att olika detektorer provas (SBF 110:8 11.5.3 b). Inget särskilt årskrav i procent.",
     },
     "110-8-sek": {
       label: "SBF 110:8 – utan larmadresser (sektioner)",

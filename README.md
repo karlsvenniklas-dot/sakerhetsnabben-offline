@@ -1,4 +1,4 @@
-# SäkerhetSnabben Offline 2.7.1
+# SäkerhetSnabben Offline 2.7.2
 
 Mobilanpassad app för brandlarm: kundobjekt, arbetsorder, brandlarmsprotokoll (BL401) och detektorregister. Appen körs lokalt i webbläsaren utan konto eller ChatGPT-inloggning.
 
@@ -147,7 +147,7 @@ Inga sparade uppgifter raderas. Redan arkiverade protokoll av de borttagna typer
 - Säkerhetskopior och objektpaket inkluderar även ritningarnas vyrotation (nyckeln `drawing-view:`). Äldre data behålls.
 - Ångra provning återställer även en orörd automatiskt skapad felpost i samma databastransaktion. Är felet redan ändrat stoppas ångringen och befintlig felhistorik skyddas.
 - Listan över kvarstående fel tar med öppna felärenden även om en senare provning är OK. Ett fel markeras inte som kontrollerat av att ett nytt prov sparas.
-- Årsberäkning enligt SBF 110:8 11.5.3 b visar minst 8 % adresserade detektorer utöver 2 % per kvartal. Översikten avser detektorprovning; övriga kontrollpunkter kräver separat bedömning.
+- Årsberäkning enligt SBF 110:8 11.5.3 b visar minst 8 % adresserade detektorer utöver 2 % per kvartal. Översikten avser detektorprovning; övriga kontrollpunkter kräver separat bedömning. (Borttaget i 2.7.2: kravet finns inte i SBF 110:8.)
 - Automatiska kvartalsförslag för färre än fyra sektioner har minst en planerad sektion i varje kvartal. Manuella fördelningar lämnas oförändrade.
 - PDF-text- och OCR-träffar börjar som ej granskade. Varje adress måste väljas individuellt. Ändras sektion, typ eller placering återgår raden till ej granskad. Massgodkännande har tagits bort.
 - Offlineinstallationen använder cacheversion 25 och rensar bara äldre appcacher när den nya versionen aktiveras. Den ändrar inte lokala kunduppgifter.
@@ -192,3 +192,13 @@ Automatiska Node-tester täcker grundlogik och regressionsfall. Innan appen anv�
 - Import av en ofullständig kopia visar vad som saknas i bekräftelsen, och resten kan importeras.
 - I ritningsgranskningen kan typ och sektion sättas på flera rader samtidigt. Bara tomma fält fylls, och raderna kryssas inte i automatiskt.
 - Cacheversion 29.
+
+### Version 2.7.2 – provningskrav kontrollerade mot regelverken
+
+Reglerna i appen är jämförda med SBF 110:8 (januari 2017) avsnitt 11.5.3 och SBF 110:7 utgåva 2 avsnitt 11.5.4.
+
+- **SBF 110:8 med larmadresser (11.5.3 b):** minst 2 % av detektorerna per kvartal, spridda över anläggningen och året så att olika detektorer provas. Årskravet på 8 % som lades till i 2.5.1 är borttaget, eftersom det inte finns i regelverket.
+- **SBF 110:8 utan larmadresser (11.5.3 a):** minst en detektor i 10 % av sektionerna per kvartal, och alla sektioner under året. Oförändrat, stämmer.
+- **SBF 110:7 (kvartalsprov a):** minst en detektor per sektion i minst 25 % av sektionerna per kvartal, och per år minst 5 % av detektorerna och alla sektioner. Oförändrat, stämmer.
+- Larmdon, styrningar, larmöverföring, tablåer och batterier ingår också i kvartalsprovet men räknas inte av appen. De kontrolleras enligt protokollet.
+- Cacheversion 30.

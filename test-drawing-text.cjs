@@ -76,10 +76,9 @@ let p = core.progress(cov, { rule: 'auto' }, adr);
 assert.equal(p.rule, '110-8-adr');
 assert.equal(p.quarter.needed, 3);
 assert.equal(p.quarter.met, true);
-assert.equal(p.yearChecks[0].needed,10);
-assert.equal(p.yearMet,true);
-assert.equal(core.progress({ ...cov, year: {devices: 7,sections: 20} }, {rule:'110-8-adr'}, adr).yearMet,false);
-assert.equal(core.progress({ ...cov, year: {devices: 0,sections: 0} }, {rule:'110-8-adr'}, adr).yearMet,false);
+// SBF 110:8 11.5.3 b sets no yearly percentage (checked against the standard, Jan 2017 edition).
+assert.deepEqual(p.yearChecks,[]);
+assert.equal(p.yearMet,null);
 assert.equal(core.progress({ ...cov, quarter: { devices: 2, sections: 2 } }, { rule: 'auto' }, adr).quarter.met, false);
 // small systems still need at least one detector
 assert.equal(core.progress({ ...cov, totalDevices: 7 }, { rule: '110-8-adr' }).quarter.needed, 1);
