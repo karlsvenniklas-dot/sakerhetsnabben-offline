@@ -1,4 +1,4 @@
-# SäkerhetSnabben Offline 2.7.2
+# SäkerhetSnabben Offline 2.8.0
 
 Mobilanpassad app för brandlarm: kundobjekt, arbetsorder, brandlarmsprotokoll (BL401) och detektorregister. Appen körs lokalt i webbläsaren utan konto eller ChatGPT-inloggning.
 
@@ -202,3 +202,18 @@ Reglerna i appen är jämförda med SBF 110:8 (januari 2017) avsnitt 11.5.3 och 
 - **SBF 110:7 (kvartalsprov a):** minst en detektor per sektion i minst 25 % av sektionerna per kvartal, och per år minst 5 % av detektorerna och alla sektioner. Oförändrat, stämmer.
 - Larmdon, styrningar, larmöverföring, tablåer och batterier ingår också i kvartalsprovet men räknas inte av appen. De kontrolleras enligt protokollet.
 - Cacheversion 30.
+
+### Version 2.8.0 – förbättringsrunda
+
+- **Teknikerns namn minns på enheten** och fylls i automatiskt i provningsformuläret, felregistret, statusändringar, servicerapporten och ritningsvyn. Namnet sparas bara lokalt och hålls isär från övningsläget.
+- **Provningsfoton förminskas automatiskt** till högst 1600 px i stället för att avvisas över 2 MB. Kamerabilder från telefonen går därmed att bifoga direkt.
+- Ett avbrutet sparförsök (till exempel en dubblett av en detektoradress) visar inte längre varningen om att utrymmet är slut. Varningen om lagringsfel försvinner när en senare sparning lyckas.
+- Arbetsorder sparas i ett enda steg, så två snabba ändringar kan inte skriva över varandra.
+- Filtret för slinga och sektion i detektorlistan klarar beteckningar med bokstäver, exempelvis A1.
+- Äldre eller importerade poster som saknar tidsstämpel, ordernummer eller adress kraschar inte längre sortering, historik och felregister.
+- Säkerhetskopians filnamn får lokalt datum i stället för UTC. Påminnelsen om säkerhetskopia läser rätt datum i övningsläget. CSV-nedladdningar hinner slutföras på långsamma enheter.
+- Detektorlistan kan sorteras på sektion och adress, utöver längst sedan provning.
+- Bilder i ritningsvyn och i servicerapportens PDF läses in på samma tåliga sätt som provningsfoton.
+- Nytt test, `node test-shell-consistency.cjs`: kontrollerar att service workerns och skalets fillistor är lika, att alla filer finns, att sidorna bara laddar filer som sparas offline och att versionsnumret är detsamma överallt.
+- Övningsläget startar säkert även när appen laddas från offlinecachen. Tidigare kunde det ibland stanna med ett fel om PDF-biblioteket.
+- Cacheversion 33.

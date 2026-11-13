@@ -10,7 +10,7 @@
   if(demo){document.body.dataset.demo='yes';$('demo-banner').hidden=false;}
   let facilities=[],drafts=[],pending=null,engineReady=false,registration,cacheReady=false,toastTimer,refreshTimer;
   const files=['./','./index.html','./workspace.html','./engine.js','./engine.css','./workspace.css','./storage.js','./demo-fixture.js','./drawing-review-core.js','./backup-audit.js','./objects.js','./health-check.js','./orders.js','./detectors.js','./detectors-ui.js','./orders-ui.js','./import-ui.js','./shell.js','./shell.css','./manifest.webmanifest','./icon-192.png','./icon-512.png','./service-core.js','./service-ui.js','./service.css','./pdf-lib.min.js','./field-core.js','./drawing-discrepancies-ui.js','./drawing-discrepancies.js','./field-ui.js','./ai-config.js','./drawing-ai-core.js','./offline-drawing-scan.js','./drawing-ai-ui.js','./drawing-text-core.js','./drawing-quick-ui.js','./drawing-ocr-core.js','./drawing-ocr.js','./drawing-view.js','./quarter-plan-core.js','./drawing-export.js','./tesseract/tesseract.min.js','./tesseract/worker.min.js','./tesseract/tesseract-core-simd-lstm.wasm.js','./tesseract/tesseract-core-lstm.wasm.js','./tesseract/eng.traineddata','./field.css','./pdf.min.mjs','./pdf.worker.min.mjs'];
-  const cacheName='sn-offline-shell-v30';
+  const cacheName='sn-offline-shell-v33';
   let healthReport=null;
   let offlineError='',installing=false;
   function showOfflineError(message){offlineError=message;$('offline-error').hidden=false;$('offline-error').style.overflowWrap='anywhere';$('offline-error').textContent=`Orsak: ${message}`;}
@@ -51,11 +51,13 @@
       for(const draft of drafts.slice(0,5)){const proto=draft.key.split(':').at(-1);const b=element('button',undefined,'object-row');const info=element('span',undefined,'object-info');info.append(element('strong',draft.facility?.namn||'Snabbprotokoll'),element('small',`${proto} · ${new Date(draft.savedAt).toLocaleString('sv-SE',{dateStyle:'short',timeStyle:'short'})}`));b.append(element('span','☑','object-icon'),info,element('span','›','chevron'));b.onclick=()=>openWork('DRAFT',{id:draft.facility?.id,proto,order:draft.facility?.workOrderId?{id:draft.facility.workOrderId,ordernummer:draft.facility.ordernummer,uppdragstyp:draft.facility.uppdragstyp,planeradTill:draft.facility.planeradTill}:null});$('drafts').append(b);}
     }catch(error){$('save-error').hidden=false;$('save-error').textContent='Lokala uppgifter kunde inte läsas. Importera inte över dem innan du har sparat en säkerhetskopia.';}
   }
+  let storageFailed=false;
   window.addEventListener('local-storage-state',event=>{
     const state=event.detail;
-    if(state.state==='error'){$('save-error').hidden=false;$('save-error').textContent=state.message;$('save-state').textContent='Kunde inte spara';}
+    if(state.state==='error'){storageFailed=true;$('save-error').hidden=false;$('save-error').textContent=state.message;$('save-state').textContent='Kunde inte spara';}
     else if(state.state==='saving')$('save-state').textContent='Sparar…';
-    else if(state.state==='saved'){$('save-state').textContent='Sparat på telefonen';clearTimeout(refreshTimer);refreshTimer=setTimeout(refresh,200);}
+    else if(state.state==='idle'){if(!storageFailed)$('save-state').textContent='Sparat på telefonen';}
+    else if(state.state==='saved'){if(storageFailed){storageFailed=false;$('save-error').hidden=true;}$('save-state').textContent='Sparat på telefonen';clearTimeout(refreshTimer);refreshTimer=setTimeout(refresh,200);}
   });
   function download(name,content){const url=URL.createObjectURL(new Blob([content],{type:'application/json'}));const a=element('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);}
   async function backup(){
@@ -63,7 +65,7 @@
    const data=await window.backupAudit.seal(await window.localData.exportBackup());
    const check=await window.backupAudit.verify(data);
    if(!check.ok)throw Error(check.errors.slice(0,2).join('; '));
-   download(`SakerhetSnabben_${new Date().toISOString().slice(0,10)}.json`,JSON.stringify(data,null,2));
+   download(`SakerhetSnabben_${new Date().toLocaleDateString('sv-SE')}.json`,JSON.stringify(data,null,2));
    try{localStorage.setItem(backupExportKey,data.exportedAt);}catch{}
    updateBackupDate();window.dispatchEvent(new Event('backup-exported'));
    const missing=check.warnings.length?' OBS: '+check.warnings.length+' saknade delar fanns redan i appen och saknas därför även i kopian: '+check.warnings.slice(0,3).join('; ')+(check.warnings.length>3?' …':'')+'. Kör "Kontrollera uppgifterna" nedan.':'';
@@ -86,7 +88,7 @@
     $('connection').textContent=cacheReady?(navigator.onLine?'Offline redo':'Offline · redo'):'Offline ej redo';
     $('offline-state').textContent=cacheReady?'Offline redo':'Inte verifierad';
     $('offline-description').textContent=cacheReady?'Appens filer finns sparade på den här enheten. Prova att stänga och öppna appen i flygplansläge innan första uppdraget.':'Appen behöver öppnas med internet tills alla filer har sparats. Om detta kvarstår kan inloggningen eller webbläsaren hindra offlineinstallationen.';
-    $('offline-progress').textContent=`${count} av ${files.length} filer sparade · Version 2.7.2 · ${navigator.serviceWorker?.controller?'Offlinefunktion aktiv':'Offlinefunktion inte aktiv'}`;
+    $('offline-progress').textContent=`${count} av ${files.length} filer sparade · Version 2.8.0 · ${navigator.serviceWorker?.controller?'Offlinefunktion aktiv':'Offlinefunktion inte aktiv'}`;
     if(cacheReady){offlineError='';$('offline-error').hidden=true;}
   }
   async function initOffline(){
@@ -170,7 +172,9 @@
   window.addEventListener('online',verifyCache);window.addEventListener('offline',verifyCache);
   $('today').textContent=new Date().toLocaleDateString('sv-SE',{weekday:'long',day:'numeric',month:'long'}).toLocaleUpperCase('sv');
   updateBackupDate();
-  window.localReady.then(async()=>{if(demo){await window.demoFixture.seed();frame.src=workspaceUrl;}await refresh();}).catch(error=>{$('save-error').hidden=false;$('save-error').textContent='Kunde inte initiera övningsläget: '+error.message;});
+  /* Later deferred scripts (the PDF library) must have run before the practice data is built. This script is deferred, so DOMContentLoaded has not fired yet. */
+  const scriptsReady=new Promise(resolve=>document.readyState==="complete"?resolve():document.addEventListener("DOMContentLoaded",resolve,{once:true}));
+  window.localReady.then(async()=>{if(demo){await scriptsReady;await window.demoFixture.seed();frame.src=workspaceUrl;}await refresh();}).catch(error=>{$('save-error').hidden=false;$('save-error').textContent='Kunde inte initiera övningsläget: '+error.message;});
   initOffline();
   window.addEventListener('open-order',event=>openWork('ORDER',event.detail));window.addEventListener('open-customer',event=>openWork('OBJECT',event.detail));window.addEventListener('open-report',event=>openWork('REPORT',event.detail));
   const tools=document.modelContext;

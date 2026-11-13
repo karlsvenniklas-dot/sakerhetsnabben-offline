@@ -542,14 +542,7 @@
     }
 
     /* ---------- technician memory (this device only) ---------- */
-    try {
-      if (!technician.value) technician.value = localStorage.getItem((new URLSearchParams(location.search).get('demo')==='1'?'demo-':'')+"dq-technician") || "";
-    } catch {}
-    technician.addEventListener("change", () => {
-      try {
-        localStorage.setItem((new URLSearchParams(location.search).get('demo')==='1'?'demo-':'')+"dq-technician", technician.value.trim());
-      } catch {}
-    });
+    window.technicianMemory.bind(technician);
 
     /* ---------- tap-to-test sheet ---------- */
     function closeSheet() {

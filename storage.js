@@ -28,13 +28,16 @@
     return new Promise((resolve,reject) => {
       const tx = db.transaction('records', mode);
       const store = tx.objectStore('records');
-      let result;
-      try { result = run(store); } catch(error) { tx.abort(); reject(error); return; }
+      let result, cancelled = false;
+      try { result = run(store); } catch(error) { cancelled = true; tx.abort(); reject(error); if (mode === 'readwrite') signal({state:'idle'}); return; }
       tx.oncomplete = () => {
         if (mode === 'readwrite') signal({state:'saved', time:Date.now()});
         resolve(typeof result === 'function' ? result() : result?.result);
       };
       tx.onabort = tx.onerror = () => {
+        if (cancelled) return;
+        // A validation error thrown inside a request callback aborts on purpose: nothing was written and the disk is not full.
+        if (!tx.error || tx.error.name === 'AbortError') { cancelled = true; if (mode === 'readwrite') signal({state:'idle'}); reject(tx.error || new Error('Lagringen avbröts')); return; }
         signal({state:'error', message:'Kunde inte spara. Behåll sidan öppen och frigör utrymme på telefonen.'});
         reject(tx.error || new Error('Lagringen avbröts'));
       };
@@ -135,6 +138,17 @@
       // One transaction: all imported keys succeed together, or none change.
       await transact('readwrite', store=>{for(const [key,value] of entries) store.put(value,key);});
       return entries.length;
+    }
+  };
+  /* The technician's name is remembered on this device only, separately for the practice mode. */
+  const TECH_KEY = (DEMO ? 'demo-' : '') + 'dq-technician';
+  window.technicianMemory = {
+    get() { try { return localStorage.getItem(TECH_KEY) || ''; } catch { return ''; } },
+    set(value) { const name = String(value || '').trim(); if (!name) return; try { localStorage.setItem(TECH_KEY, name); } catch {} },
+    bind(input) {
+      if (!input.value) input.value = this.get();
+      input.addEventListener('change', () => this.set(input.value));
+      return input;
     }
   };
   window.restoreSafetyBackup = async backup => {
